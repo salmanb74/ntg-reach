@@ -1,0 +1,183 @@
+'use client'
+
+import { useState } from 'react'
+import Link from 'next/link'
+import {
+  DndContext,
+  DragEndEvent,
+  DragOverEvent,
+  DragStartEvent,
+  PointerSensor,
+  TouchSensor,
+  useSensor,
+  useSensors,
+  DragOverlay,
+  closestCenter,
+} from '@dnd-kit/core'
+import { SortableContext, verticalListSortingStrategy } from '@dnd-kit/sortable'
+import { useSortable } from '@dnd-kit/sortable'
+import { CSS } from '@dnd-kit/utilities'
+import { updateLeadStage } from '@/lib/actions/leads'
+import {
+  PIPELINE_STAGES, STAGE_LABELS, STAGE_CSS,
+  type Lead, type PipelineStage
+} from '@/lib/types'
+import styles from './KanbanBoard.module.css'
+
+// ─── Kanban Card ─────────────────────────────────────────────
+function KanbanCard({ lead, isDragging }: { lead: Lead; isDragging?: boolean }) {
+  const { attributes, listeners, setNodeRef, transform, transition } = useSortable({ id: lead.id })
+  const style = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+    opacity: isDragging ? 0.4 : 1,
+  }
+
+  const initials = lead.contact_name.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2)
+
+  return (
+    <div ref={setNodeRef} style={style} {...attributes} {...listeners} className={styles.card}>
+      <Link href={`/leads/${lead.id}`} onClick={e => e.stopPropagation()} className={styles.cardLink}>
+        <div className={styles.cardHeader}>
+          <div className={styles.cardAvatar}>{initials}</div>
+          <div>
+            <div className={styles.cardName}>{lead.contact_name}</div>
+            <div className={styles.cardCompany}>{lead.company_name}</div>
+          </div>
+        </div>
+        {lead.city && (
+          <div className={styles.cardMeta}>
+            <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z"/><circle cx="12" cy="10" r="3"/></svg>
+            {lead.city}
+          </div>
+        )}
+      </Link>
+    </div>
+  )
+}
+
+// ─── Kanban Column ────────────────────────────────────────────
+function KanbanColumn({
+  stage,
+  leads,
+  isOver,
+}: {
+  stage: PipelineStage
+  leads: Lead[]
+  isOver: boolean
+}) {
+  const cssKey = STAGE_CSS[stage]
+
+  return (
+    <div className={`${styles.column} ${isOver ? styles.columnOver : ''}`}>
+      <div className={styles.columnHeader}>
+        <span className={styles.columnLabel}>{STAGE_LABELS[stage]}</span>
+        <span
+          className={styles.columnCount}
+          style={{
+            background: `var(--stage-${cssKey}-bg)`,
+            color: `var(--stage-${cssKey}-text)`,
+          }}
+        >
+          {leads.length}
+        </span>
+      </div>
+
+      <div className={styles.columnBody} data-stage={stage}>
+        <SortableContext items={leads.map(l => l.id)} strategy={verticalListSortingStrategy}>
+          {leads.map(lead => (
+            <KanbanCard key={lead.id} lead={lead} />
+          ))}
+        </SortableContext>
+        {leads.length === 0 && (
+          <div className={styles.emptyCol}>Drop here</div>
+        )}
+      </div>
+    </div>
+  )
+}
+
+// ─── Board ────────────────────────────────────────────────────
+export default function KanbanBoard({ initialLeads }: { initialLeads: Lead[] }) {
+  const [leads, setLeads] = useState<Lead[]>(initialLeads)
+  const [activeId, setActiveId] = useState<string | null>(null)
+  const [overStage, setOverStage] = useState<PipelineStage | null>(null)
+
+  const sensors = useSensors(
+    useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
+    useSensor(TouchSensor, { activationConstraint: { delay: 200, tolerance: 5 } })
+  )
+
+  const leadsByStage = PIPELINE_STAGES.reduce<Record<string, Lead[]>>((acc, stage) => {
+    acc[stage] = leads.filter(l => l.stage === stage)
+    return acc
+  }, {})
+
+  const activeLead = activeId ? leads.find(l => l.id === activeId) : null
+
+  function getStageFromPoint(overId: string): PipelineStage | null {
+    // overId could be a lead ID or a stage string
+    if (PIPELINE_STAGES.includes(overId as PipelineStage)) return overId as PipelineStage
+    const lead = leads.find(l => l.id === overId)
+    return lead?.stage ?? null
+  }
+
+  function handleDragStart(event: DragStartEvent) {
+    setActiveId(event.active.id as string)
+  }
+
+  function handleDragOver(event: DragOverEvent) {
+    const { over } = event
+    if (!over) { setOverStage(null); return }
+    const stage = getStageFromPoint(over.id as string)
+    setOverStage(stage)
+  }
+
+  async function handleDragEnd(event: DragEndEvent) {
+    const { active, over } = event
+    setActiveId(null)
+    setOverStage(null)
+
+    if (!over) return
+    const newStage = getStageFromPoint(over.id as string)
+    if (!newStage) return
+
+    const lead = leads.find(l => l.id === active.id)
+    if (!lead || lead.stage === newStage) return
+
+    // Optimistic update
+    setLeads(prev => prev.map(l => l.id === lead.id ? { ...l, stage: newStage } : l))
+
+    try {
+      await updateLeadStage(lead.id, newStage)
+    } catch {
+      // Revert on error
+      setLeads(prev => prev.map(l => l.id === lead.id ? { ...l, stage: lead.stage } : l))
+    }
+  }
+
+  return (
+    <DndContext
+      sensors={sensors}
+      collisionDetection={closestCenter}
+      onDragStart={handleDragStart}
+      onDragOver={handleDragOver}
+      onDragEnd={handleDragEnd}
+    >
+      <div className={styles.board}>
+        {PIPELINE_STAGES.map(stage => (
+          <KanbanColumn
+            key={stage}
+            stage={stage}
+            leads={leadsByStage[stage]}
+            isOver={overStage === stage}
+          />
+        ))}
+      </div>
+
+      <DragOverlay>
+        {activeLead && <KanbanCard lead={activeLead} />}
+      </DragOverlay>
+    </DndContext>
+  )
+}
