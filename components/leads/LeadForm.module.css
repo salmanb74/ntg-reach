@@ -49,6 +49,13 @@
 
 .textarea { resize: vertical; line-height: 1.5; }
 
+.charCount {
+  font-size: 11px;
+  color: var(--color-text-3);
+  text-align: right;
+  margin-top: 2px;
+}
+
 .error {
   background: var(--color-error-bg);
   color: var(--color-error);

@@ -11,6 +11,7 @@ export interface LeadFormData {
   email?: string
   phone?: string
   city?: string
+  address?: string
   restaurant_type?: string
   source?: LeadSource
   stage: PipelineStage

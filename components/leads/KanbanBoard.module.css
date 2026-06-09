@@ -58,6 +58,13 @@
   gap: 6px;
   overflow-y: auto;
   flex: 1;
+  min-height: 80px;
+  border-radius: 0 0 var(--radius-lg) var(--radius-lg);
+  transition: background 0.15s;
+}
+
+.columnBodyOver {
+  background: var(--color-primary-subtle);
 }
 
 .addBtn {
@@ -73,12 +80,21 @@
 .addBtn:hover {
   background: var(--color-primary-subtle);
   color: var(--color-primary);
+}
+
+.emptyCol {
   text-align: center;
   font-size: 11px;
   color: var(--color-text-3);
   padding: 20px 8px;
   border: 2px dashed var(--color-border);
   border-radius: var(--radius-md);
+  transition: border-color 0.15s, color 0.15s;
+}
+
+.emptyColOver {
+  border-color: var(--color-primary);
+  color: var(--color-primary);
 }
 
 /* ─── Card ───────────────────────────────────────────────────── */
@@ -150,4 +166,9 @@
 @media (max-width: 768px) {
   .board { gap: 8px; }
   .column { min-width: 160px; }
+}
+
+.emptyColOver {
+  border-color: var(--color-primary);
+  color: var(--color-primary);
 }

@@ -31,6 +31,7 @@ export default function LeadForm({ lead, initialStage }: LeadFormProps) {
     source:          lead?.source          ?? '',
     stage:           lead?.stage           ?? initialStage ?? 'new',
     notes:           lead?.notes           ?? '',
+    address:         lead?.address         ?? '',
   })
 
   function set(field: string, value: string) {
@@ -58,6 +59,7 @@ export default function LeadForm({ lead, initialStage }: LeadFormProps) {
           source:          (form.source as LeadSource) || undefined,
           stage:           form.stage as PipelineStage,
           notes:           form.notes.trim() || undefined,
+          address:         form.address.trim() || undefined,
         }
 
         if (lead) {
@@ -129,6 +131,19 @@ export default function LeadForm({ lead, initialStage }: LeadFormProps) {
             ))}
           </select>
         </div>
+      </div>
+
+      <div className={styles.field}>
+        <label className={styles.label}>Address</label>
+        <textarea
+          className={styles.textarea}
+          value={form.address}
+          onChange={e => set('address', e.target.value.slice(0, 300))}
+          placeholder="Street address, area, landmark…"
+          rows={2}
+          maxLength={300}
+        />
+        <div className={styles.charCount}>{form.address.length}/300</div>
       </div>
 
       <div className={styles.field}>
