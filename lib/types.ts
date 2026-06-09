@@ -96,6 +96,7 @@ export interface Lead {
   restaurant_type: string | null
   source: LeadSource | null
   stage: PipelineStage
+  address: string | null
   notes: string | null
   created_at: string
   updated_at: string
