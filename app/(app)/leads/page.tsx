@@ -15,6 +15,7 @@ interface SearchParams {
   stage?: string
   sort?: string
   page?: string
+  [key: string]: string | undefined
 }
 
 export default async function LeadsPage({ searchParams }: { searchParams: SearchParams }) {
