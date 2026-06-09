@@ -2,31 +2,64 @@ import { createClient } from '@/lib/supabase/server'
 import Topbar from '@/components/layout/Topbar'
 import LeadsTable from '@/components/leads/LeadsTable'
 import LeadsExportButton from '@/components/leads/LeadsExportButton'
+import LeadsPagination from '@/components/leads/LeadsPagination'
 import Link from 'next/link'
 import Button from '@/components/ui/Button'
 import { PIPELINE_STAGES, STAGE_LABELS, type PipelineStage } from '@/lib/types'
 import styles from './leads.module.css'
 
-interface SearchParams { q?: string; stage?: string; sort?: string }
+const PAGE_SIZE = 25
+
+interface SearchParams {
+  q?: string
+  stage?: string
+  sort?: string
+  page?: string
+}
 
 export default async function LeadsPage({ searchParams }: { searchParams: SearchParams }) {
   const supabase = createClient()
-  const { q, stage, sort = 'newest' } = searchParams
+  const { q, stage, sort = 'newest', page = '1' } = searchParams
+  const currentPage = Math.max(1, parseInt(page) || 1)
+  const from = (currentPage - 1) * PAGE_SIZE
+  const to   = from + PAGE_SIZE - 1
 
+  // Count query (for pagination)
+  let countQuery = supabase.from('leads').select('*', { count: 'exact', head: true })
+  if (q?.trim()) {
+    countQuery = countQuery.or(
+      `contact_name.ilike.%${q}%,company_name.ilike.%${q}%,email.ilike.%${q}%,phone.ilike.%${q}%,city.ilike.%${q}%`
+    )
+  }
+  if (stage && stage !== 'all') countQuery = countQuery.eq('stage', stage)
+  const { count: totalCount } = await countQuery
+
+  // Data query with pagination
   let query = supabase.from('leads').select('*')
-
   if (q?.trim()) {
     query = query.or(
       `contact_name.ilike.%${q}%,company_name.ilike.%${q}%,email.ilike.%${q}%,phone.ilike.%${q}%,city.ilike.%${q}%`
     )
   }
   if (stage && stage !== 'all') query = query.eq('stage', stage)
-  if (sort === 'oldest') query = query.order('created_at', { ascending: true })
-  else if (sort === 'name') query = query.order('contact_name', { ascending: true })
-  else query = query.order('created_at', { ascending: false })
+  if (sort === 'oldest')       query = query.order('created_at', { ascending: true })
+  else if (sort === 'name')    query = query.order('contact_name', { ascending: true })
+  else                         query = query.order('created_at', { ascending: false })
+  query = query.range(from, to)
 
   const { data: leads } = await query
-  const { count: totalCount } = await supabase.from('leads').select('*', { count: 'exact', head: true })
+
+  const totalPages = Math.ceil((totalCount ?? 0) / PAGE_SIZE)
+
+  // For export — fetch all matching (no pagination limit)
+  let exportQuery = supabase.from('leads').select('*')
+  if (q?.trim()) {
+    exportQuery = exportQuery.or(
+      `contact_name.ilike.%${q}%,company_name.ilike.%${q}%,email.ilike.%${q}%,phone.ilike.%${q}%,city.ilike.%${q}%`
+    )
+  }
+  if (stage && stage !== 'all') exportQuery = exportQuery.eq('stage', stage)
+  const { data: allLeads } = await exportQuery
 
   return (
     <>
@@ -53,7 +86,7 @@ export default async function LeadsPage({ searchParams }: { searchParams: Search
             <button type="submit" className={styles.searchBtn}>Search</button>
           </form>
           <div className={styles.actions}>
-            <LeadsExportButton leads={leads ?? []} />
+            <LeadsExportButton leads={allLeads ?? []} />
             <Link href="/leads/import">
               <Button size="sm" variant="outline">
                 <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
@@ -75,10 +108,10 @@ export default async function LeadsPage({ searchParams }: { searchParams: Search
 
         <div className={styles.resultsRow}>
           <span className={styles.resultsCount}>
-            {leads?.length ?? 0} lead{leads?.length !== 1 ? 's' : ''}
+            {totalCount ?? 0} lead{totalCount !== 1 ? 's' : ''}
             {q && ` matching "${q}"`}
             {stage && stage !== 'all' && ` · ${STAGE_LABELS[stage as PipelineStage] ?? stage}`}
-            {!q && (!stage || stage === 'all') && totalCount !== null && ` of ${totalCount} total`}
+            {totalPages > 1 && ` · page ${currentPage} of ${totalPages}`}
           </span>
           <Link href="/pipeline" className={styles.kanbanLink}>
             <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><rect x="3" y="3" width="5" height="18"/><rect x="9" y="3" width="5" height="12"/><rect x="15" y="3" width="5" height="8"/></svg>
@@ -87,6 +120,14 @@ export default async function LeadsPage({ searchParams }: { searchParams: Search
         </div>
 
         <LeadsTable leads={leads ?? []} />
+
+        {totalPages > 1 && (
+          <LeadsPagination
+            currentPage={currentPage}
+            totalPages={totalPages}
+            searchParams={searchParams}
+          />
+        )}
       </div>
     </>
   )

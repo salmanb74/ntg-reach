@@ -4,6 +4,7 @@ import { useState, useTransition } from 'react'
 import { useRouter } from 'next/navigation'
 import { createLead, updateLead } from '@/lib/actions/leads'
 import Button from '@/components/ui/Button'
+import CityCombobox from '@/components/ui/CityCombobox'
 import {
   PIPELINE_STAGES, STAGE_LABELS, SOURCE_LABELS, RESTAURANT_TYPES,
   type Lead, type PipelineStage, type LeadSource
@@ -11,10 +12,11 @@ import {
 import styles from './LeadForm.module.css'
 
 interface LeadFormProps {
-  lead?: Lead   // if provided → edit mode
+  lead?: Lead
+  initialStage?: string
 }
 
-export default function LeadForm({ lead }: LeadFormProps) {
+export default function LeadForm({ lead, initialStage }: LeadFormProps) {
   const router = useRouter()
   const [isPending, startTransition] = useTransition()
   const [error, setError] = useState<string | null>(null)
@@ -27,7 +29,7 @@ export default function LeadForm({ lead }: LeadFormProps) {
     city:            lead?.city            ?? '',
     restaurant_type: lead?.restaurant_type ?? '',
     source:          lead?.source          ?? '',
-    stage:           lead?.stage           ?? 'new',
+    stage:           lead?.stage           ?? initialStage ?? 'new',
     notes:           lead?.notes           ?? '',
   })
 
@@ -97,7 +99,10 @@ export default function LeadForm({ lead }: LeadFormProps) {
 
         <div className={styles.field}>
           <label className={styles.label}>City</label>
-          <input className={styles.input} value={form.city} onChange={e => set('city', e.target.value)} placeholder="Karachi" />
+          <CityCombobox
+            value={form.city}
+            onChange={val => set('city', val)}
+          />
         </div>
 
         <div className={styles.field}>

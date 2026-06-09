@@ -60,7 +60,20 @@
   flex: 1;
 }
 
-.emptyCol {
+.addBtn {
+  width: 20px;
+  height: 20px;
+  border-radius: var(--radius-sm);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--color-text-3);
+  transition: background 0.15s, color 0.15s;
+}
+.addBtn:hover {
+  background: var(--color-primary-subtle);
+  color: var(--color-primary);
+}
   text-align: center;
   font-size: 11px;
   color: var(--color-text-3);

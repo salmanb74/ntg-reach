@@ -1,6 +1,7 @@
 import { createClient } from '@/lib/supabase/server'
 import { redirect } from 'next/navigation'
 import Sidebar from '@/components/layout/Sidebar'
+import KeepAlive from '@/components/layout/KeepAlive'
 import styles from './layout.module.css'
 
 export default async function AppLayout({
@@ -22,6 +23,7 @@ export default async function AppLayout({
 
   return (
     <div className={styles.shell}>
+      <KeepAlive />
       <Sidebar />
       <main className={styles.main}>
         {children}

@@ -2,6 +2,7 @@
 
 import { useState } from 'react'
 import Link from 'next/link'
+import Link from 'next/link'
 import {
   DndContext,
   DragEndEvent,
@@ -72,15 +73,26 @@ function KanbanColumn({
     <div className={`${styles.column} ${isOver ? styles.columnOver : ''}`}>
       <div className={styles.columnHeader}>
         <span className={styles.columnLabel}>{STAGE_LABELS[stage]}</span>
-        <span
-          className={styles.columnCount}
-          style={{
-            background: `var(--stage-${cssKey}-bg)`,
-            color: `var(--stage-${cssKey}-text)`,
-          }}
-        >
-          {leads.length}
-        </span>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+          <span
+            className={styles.columnCount}
+            style={{
+              background: `var(--stage-${cssKey}-bg)`,
+              color: `var(--stage-${cssKey}-text)`,
+            }}
+          >
+            {leads.length}
+          </span>
+          <Link
+            href={`/leads/new?stage=${stage}`}
+            className={styles.addBtn}
+            title={`Add lead to ${STAGE_LABELS[stage]}`}
+          >
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">
+              <path d="M12 5v14M5 12h14"/>
+            </svg>
+          </Link>
+        </div>
       </div>
 
       <div className={styles.columnBody} data-stage={stage}>
