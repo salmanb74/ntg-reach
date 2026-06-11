@@ -39,7 +39,7 @@ export async function GET() {
     const rates: Record<string, number> = { USD: 1, ...data.rates }
 
     // Upsert all pairs we need
-    const upserts = []
+    const upserts: { base: string; target: string; rate: number; fetched_at: string }[] = []
     for (const from of allCurrencies) {
       for (const to of allCurrencies) {
         if (from === to) continue
