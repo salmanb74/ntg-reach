@@ -22,7 +22,7 @@ export default async function NewContractPage({
     .from('app_settings').select('value').eq('key', 'input_currency').single()
   const inputCurrency = currencySetting?.value ?? 'PKR'
 
-  let lead = null
+  let lead: any = null
   let prefilled: Record<string, string> = {}
 
   if (searchParams.lead) {
