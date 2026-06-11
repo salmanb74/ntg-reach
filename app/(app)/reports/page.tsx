@@ -49,7 +49,7 @@ export default async function ReportsPage({
 
   const { data: allLeads } = await supabase
     .from('leads')
-    .select('id, stage, quoted_setup_fee, quoted_mrr, payment_frequency, created_by')
+    .select('id, stage, quoted_setup_fee, quoted_mrr, payment_frequency, payment_start_date, closed_at, created_by')
     .eq('created_by', selectedRepId)
 
   const selectedUser = allUsers?.find(u => u.id === selectedRepId) ?? allUsers?.[0]
