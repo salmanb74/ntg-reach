@@ -160,3 +160,6 @@ create policy "meetings_all" on public.meetings for all to authenticated using (
 -- ─── Done ─────────────────────────────────────────────────────
 -- Next: create a user in Supabase Dashboard → Authentication → Users
 -- Then copy your project URL and anon key to .env.local
+
+-- ─── Add address column to leads (run if table already exists) ───
+alter table public.leads add column if not exists address text;

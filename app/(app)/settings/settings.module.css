@@ -1,0 +1,11 @@
+.layout {
+  display: flex;
+  gap: 0;
+  min-height: calc(100vh - var(--topbar-height));
+}
+
+.content {
+  flex: 1;
+  padding: 28px 32px;
+  min-width: 0;
+}

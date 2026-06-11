@@ -98,6 +98,12 @@ export interface Lead {
   stage: PipelineStage
   address: string | null
   notes: string | null
+  quoted_setup_fee:   number | null
+  quoted_mrr:         number | null
+  deal_currency:      string | null
+  closed_at:          string | null
+  payment_start_date: string | null
+  payment_frequency:  'monthly' | 'annual' | null
   created_at: string
   updated_at: string
 }
@@ -145,4 +151,17 @@ export interface Profile {
   ms_access_token: string | null
   ms_token_expiry: string | null
   created_at: string
+}
+
+export interface Target {
+  id:               string
+  user_id:          string
+  label:            string
+  start_date:       string
+  end_date:         string
+  leads_target:     number | null
+  setup_fee_target: number | null
+  mrr_target:       number | null
+  revenue_target:   number | null
+  created_at:       string
 }

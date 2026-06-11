@@ -2,19 +2,24 @@ import { createClient } from '@/lib/supabase/server'
 import { notFound } from 'next/navigation'
 import Topbar from '@/components/layout/Topbar'
 import LeadActions from '@/components/leads/LeadActions'
+import Timeline from '@/components/leads/Timeline'
 import Link from 'next/link'
 import styles from './lead.module.css'
 
 export default async function LeadDetailPage({ params }: { params: { id: string } }) {
   const supabase = createClient()
 
-  const { data: lead } = await supabase
-    .from('leads')
-    .select('*')
-    .eq('id', params.id)
-    .single()
+  const [
+    { data: lead },
+    { data: currencySetting },
+  ] = await Promise.all([
+    supabase.from('leads').select('*').eq('id', params.id).single(),
+    supabase.from('app_settings').select('value').eq('key', 'input_currency').single(),
+  ])
 
   if (!lead) notFound()
+
+  const inputCurrency = currencySetting?.value ?? 'PKR'
 
   const { data: activities } = await supabase
     .from('activities')
@@ -129,7 +134,7 @@ export default async function LeadDetailPage({ params }: { params: { id: string 
               </div>
 
               {/* All interactive actions — client component */}
-              <LeadActions lead={lead} />
+              <LeadActions lead={lead} inputCurrency={inputCurrency} />
 
               <Link href={`/leads/${lead.id}/edit`} className={styles.editLink}>
                 <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
@@ -150,65 +155,7 @@ export default async function LeadDetailPage({ params }: { params: { id: string 
 
           {/* ── Timeline ── */}
           <div className={styles.main}>
-            <div className={styles.timelineCard}>
-              <div className={styles.timelineHeader}>
-                <span className={styles.timelineTitle}>Activity Timeline</span>
-                <span className={styles.timelineHint}>
-                  {activities?.length ?? 0} {activities?.length === 1 ? 'entry' : 'entries'}
-                </span>
-              </div>
-
-              {!activities || activities.length === 0 ? (
-                <div className={styles.timelineEmpty}>
-                  No activity yet — send an email, log a call, or note a WhatsApp conversation.
-                </div>
-              ) : (
-                <div className={styles.timeline}>
-                  {activities.map((item: any) => {
-                    const typeKey = getActivityTypeKey(item.type)
-                    return (
-                      <div key={item.id} className={styles.timelineItem}>
-                        <div
-                          className={styles.timelineIcon}
-                          style={{
-                            background: `var(--activity-${typeKey}-bg)`,
-                            color: `var(--activity-${typeKey}-color)`,
-                          }}
-                        >
-                          {ACTIVITY_ICONS[typeKey]}
-                        </div>
-                        <div className={styles.timelineContent}>
-                          <div className={styles.timelineSubject}>
-                            {ACTIVITY_LABELS[item.type] ?? item.type.replace(/_/g, ' ')}
-                            {item.subject && item.subject !== ACTIVITY_LABELS[item.type] && (
-                              <span className={styles.timelineSubjectDetail}> — {item.subject}</span>
-                            )}
-                          </div>
-                          {item.body && (
-                            <div className={styles.timelineBody}>{item.body}</div>
-                          )}
-                          {item.duration_minutes && (
-                            <div className={styles.timelineMeta}>{item.duration_minutes} min</div>
-                          )}
-                          {item.outcome && (
-                            <div className={styles.timelineMeta}>{item.outcome}</div>
-                          )}
-                          <div className={styles.timelineTime}>
-                            {new Date(item.created_at).toLocaleString('en-PK', {
-                              day: 'numeric', month: 'short', year: 'numeric',
-                              hour: '2-digit', minute: '2-digit',
-                            })}
-                            {item.direction && (
-                              <span className={styles.directionTag}>{item.direction}</span>
-                            )}
-                          </div>
-                        </div>
-                      </div>
-                    )
-                  })}
-                </div>
-              )}
-            </div>
+            <Timeline activities={activities ?? []} />
           </div>
 
         </div>

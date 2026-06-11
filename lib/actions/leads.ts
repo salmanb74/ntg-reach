@@ -6,16 +6,22 @@ import { redirect } from 'next/navigation'
 import type { PipelineStage, LeadSource } from '@/lib/types'
 
 export interface LeadFormData {
-  company_name: string
-  contact_name: string
-  email?: string
-  phone?: string
-  city?: string
-  address?: string
-  restaurant_type?: string
-  source?: LeadSource
-  stage: PipelineStage
-  notes?: string
+  company_name:       string
+  contact_name:       string
+  email?:             string
+  phone?:             string
+  city?:              string
+  address?:           string
+  restaurant_type?:   string
+  source?:            LeadSource
+  stage:              PipelineStage
+  notes?:             string
+  quoted_setup_fee?:  number | null
+  quoted_mrr?:        number | null
+  deal_currency?:     string
+  closed_at?:         string | null
+  payment_start_date?: string | null
+  payment_frequency?: 'monthly' | 'annual' | null
 }
 
 export async function createLead(data: LeadFormData) {

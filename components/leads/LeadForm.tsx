@@ -5,18 +5,18 @@ import { useRouter } from 'next/navigation'
 import { createLead, updateLead } from '@/lib/actions/leads'
 import Button from '@/components/ui/Button'
 import CityCombobox from '@/components/ui/CityCombobox'
-import {
-  PIPELINE_STAGES, STAGE_LABELS, SOURCE_LABELS, RESTAURANT_TYPES,
-  type Lead, type PipelineStage, type LeadSource
-} from '@/lib/types'
+import { PIPELINE_STAGES, STAGE_LABELS, type Lead, type PipelineStage, type LeadSource } from '@/lib/types'
 import styles from './LeadForm.module.css'
 
 interface LeadFormProps {
   lead?: Lead
   initialStage?: string
+  companyTypes?: { value: string; label: string }[]
+  leadSources?:  { value: string; label: string }[]
+  cities?:       { value: string; label: string }[]
 }
 
-export default function LeadForm({ lead, initialStage }: LeadFormProps) {
+export default function LeadForm({ lead, initialStage, companyTypes = [], leadSources = [], cities = [] }: LeadFormProps) {
   const router = useRouter()
   const [isPending, startTransition] = useTransition()
   const [error, setError] = useState<string | null>(null)
@@ -104,14 +104,15 @@ export default function LeadForm({ lead, initialStage }: LeadFormProps) {
           <CityCombobox
             value={form.city}
             onChange={val => set('city', val)}
+            cities={cities}
           />
         </div>
 
         <div className={styles.field}>
-          <label className={styles.label}>Restaurant Type</label>
+          <label className={styles.label}>Company Type</label>
           <select className={styles.select} value={form.restaurant_type} onChange={e => set('restaurant_type', e.target.value)}>
             <option value="">Select type…</option>
-            {RESTAURANT_TYPES.map(t => <option key={t} value={t}>{t}</option>)}
+            {companyTypes.map(t => <option key={t.value} value={t.label}>{t.label}</option>)}
           </select>
         </div>
 
@@ -126,9 +127,7 @@ export default function LeadForm({ lead, initialStage }: LeadFormProps) {
           <label className={styles.label}>Source</label>
           <select className={styles.select} value={form.source} onChange={e => set('source', e.target.value)}>
             <option value="">Select source…</option>
-            {Object.entries(SOURCE_LABELS).map(([val, label]) => (
-              <option key={val} value={val}>{label}</option>
-            ))}
+            {leadSources.map(s => <option key={s.value} value={s.value}>{s.label}</option>)}
           </select>
         </div>
       </div>

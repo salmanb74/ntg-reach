@@ -5,38 +5,59 @@ import { useRouter } from 'next/navigation'
 import EmailModal from '@/components/modals/EmailModal'
 import WhatsAppModal from '@/components/modals/WhatsAppModal'
 import CallModal from '@/components/modals/CallModal'
+import DealValueModal from '@/components/modals/DealValueModal'
 import Button from '@/components/ui/Button'
-import StageBadge from '@/components/ui/StageBadge'
 import { updateLead, deleteLead } from '@/lib/actions/leads'
 import { PIPELINE_STAGES, STAGE_LABELS, type Lead, type PipelineStage } from '@/lib/types'
 import styles from './LeadActions.module.css'
+
+// Stages that require deal value capture
+const DEAL_VALUE_STAGES = new Set<PipelineStage>([
+  'proposal_sent', 'negotiation', 'closed_won', 'closed_lost'
+])
 
 type ModalType = 'email' | 'whatsapp' | 'call' | null
 
 interface LeadActionsProps {
   lead: Lead
+  inputCurrency?: string
 }
 
-export default function LeadActions({ lead }: LeadActionsProps) {
+export default function LeadActions({ lead, inputCurrency = 'PKR' }: LeadActionsProps) {
   const router = useRouter()
   const [modal, setModal] = useState<ModalType>(null)
   const [stage, setStage] = useState<PipelineStage>(lead.stage)
   const [stageLoading, setStageLoading] = useState(false)
+  const [pendingStage, setPendingStage] = useState<PipelineStage | null>(null)
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
   const [isPending, startTransition] = useTransition()
 
   async function handleStageChange(newStage: PipelineStage) {
     if (newStage === stage) return
+
+    // Show deal value modal for proposal_sent and beyond
+    if (DEAL_VALUE_STAGES.has(newStage)) {
+      setPendingStage(newStage)
+      return
+    }
+
+    // Otherwise update directly
     setStageLoading(true)
     setStage(newStage)
     try {
       await updateLead(lead.id, { stage: newStage })
       router.refresh()
     } catch {
-      setStage(lead.stage) // revert
+      setStage(lead.stage)
     } finally {
       setStageLoading(false)
     }
+  }
+
+  function handleDealSaved() {
+    if (pendingStage) setStage(pendingStage)
+    setPendingStage(null)
+    router.refresh()
   }
 
   function handleDelete() {
@@ -96,6 +117,16 @@ export default function LeadActions({ lead }: LeadActionsProps) {
           </svg>
           Log Call
         </Button>
+
+        <a href={`/contracts/new?lead=${lead.id}`} className={styles.contractBtn}>
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+            <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+            <polyline points="14 2 14 8 20 8"/>
+            <line x1="12" y1="18" x2="12" y2="12"/>
+            <line x1="9" y1="15" x2="15" y2="15"/>
+          </svg>
+          Generate Contract
+        </a>
       </div>
 
       {/* Delete */}
@@ -115,6 +146,35 @@ export default function LeadActions({ lead }: LeadActionsProps) {
               {isPending ? 'Deleting…' : 'Yes, delete'}
             </Button>
           </div>
+        </div>
+      )}
+
+      {/* Deal value display */}
+      {(lead.quoted_setup_fee || lead.quoted_mrr) && (
+        <div className={styles.dealValues}>
+          <div className={styles.dealLabel}>Quoted Deal Value</div>
+          {lead.quoted_setup_fee && (
+            <div className={styles.dealRow}>
+              <span>Setup fee</span>
+              <span className={styles.dealAmount}>
+                {lead.deal_currency ?? inputCurrency} {lead.quoted_setup_fee.toLocaleString()}
+              </span>
+            </div>
+          )}
+          {lead.quoted_mrr && (
+            <div className={styles.dealRow}>
+              <span>Recurring ({lead.payment_frequency ?? 'monthly'})</span>
+              <span className={styles.dealAmount}>
+                {lead.deal_currency ?? inputCurrency} {lead.quoted_mrr.toLocaleString()}
+              </span>
+            </div>
+          )}
+          {lead.payment_frequency === 'annual' && lead.quoted_mrr && (
+            <div className={styles.dealRow} style={{ color: 'var(--color-text-3)', fontSize: 11 }}>
+              <span>MRR equivalent</span>
+              <span>{lead.deal_currency ?? inputCurrency} {(lead.quoted_mrr / 12).toFixed(0)}/mo</span>
+            </div>
+          )}
         </div>
       )}
 
@@ -142,6 +202,18 @@ export default function LeadActions({ lead }: LeadActionsProps) {
           leadName={lead.contact_name}
           onClose={() => setModal(null)}
           onSaved={handleModalSaved}
+        />
+      )}
+      {pendingStage && (
+        <DealValueModal
+          leadId={lead.id}
+          leadName={lead.contact_name}
+          newStage={pendingStage}
+          existingSetupFee={lead.quoted_setup_fee}
+          existingMrr={lead.quoted_mrr}
+          currency={inputCurrency}
+          onClose={() => setPendingStage(null)}
+          onSaved={handleDealSaved}
         />
       )}
     </>

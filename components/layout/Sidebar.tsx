@@ -8,6 +8,7 @@ const NAV_ITEMS = [
   { href: '/dashboard', icon: '⊞', label: 'Dashboard', svgPath: 'M3 3h7v7H3V3zm11 0h7v7h-7V3zM3 14h7v7H3v-7zm11 0h7v7h-7v-7z' },
   { href: '/leads',     icon: '👥', label: 'Leads',     svgPath: 'M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2M9 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8zm14 10v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75' },
   { href: '/pipeline',  icon: '⬛', label: 'Pipeline',  svgPath: 'M3 3h5v18H3zM9 3h5v12H9zM15 3h5v8h-5z' },
+  { href: '/reports',   icon: '📊', label: 'Reports',   svgPath: 'M18 20V10M12 20V4M6 20v-6' },
   { href: '/calendar',  icon: '📅', label: 'Calendar',  svgPath: 'M3 9h18M8 3v3m8-3v3M3 6a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V6z' },
   { href: '/settings',  icon: '⚙',  label: 'Settings',  svgPath: 'M12 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6zm7.071-3c0-.34-.027-.674-.08-1l2.116-1.65-2-3.464-2.49.998A7.002 7.002 0 0 0 14.5 5.8L14 3h-4l-.5 2.8a7.002 7.002 0 0 0-2.117 1.088L4.893 5.89l-2 3.464L4.99 11c-.053.326-.08.66-.08 1s.027.674.08 1L2.893 14.65l2 3.464 2.49-.998A7.002 7.002 0 0 0 9.5 18.2L10 21h4l.5-2.8a7.002 7.002 0 0 0 2.117-1.088l2.49.998 2-3.464L18.99 13c.053-.326.08-.66.08-1z' },
 ]

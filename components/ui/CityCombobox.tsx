@@ -1,16 +1,17 @@
 'use client'
 
 import { useState, useRef, useEffect } from 'react'
-import { PAKISTAN_CITIES } from '@/lib/cities'
 import styles from './CityCombobox.module.css'
 
 interface CityComboboxProps {
   value: string
   onChange: (value: string) => void
   placeholder?: string
+  cities?: { value: string; label: string }[]
 }
 
-export default function CityCombobox({ value, onChange, placeholder = 'e.g. Karachi' }: CityComboboxProps) {
+export default function CityCombobox({ value, onChange, placeholder = 'e.g. Karachi', cities = [] }: CityComboboxProps) {
+  const cityLabels = cities.map(c => c.label)
   const [open, setOpen] = useState(false)
   const [query, setQuery] = useState(value)
   const wrapRef = useRef<HTMLDivElement>(null)
@@ -32,14 +33,13 @@ export default function CityCombobox({ value, onChange, placeholder = 'e.g. Kara
   }, [query, onChange])
 
   const filtered = query.trim() === ''
-    ? PAKISTAN_CITIES
-    : PAKISTAN_CITIES.filter(city =>
+    ? cityLabels
+    : cityLabels.filter(city =>
         city.toLowerCase().includes(query.toLowerCase())
       )
 
-  // Show "add custom" option if query doesn't exactly match any city
   const showCustom = query.trim() !== '' &&
-    !PAKISTAN_CITIES.some(c => c.toLowerCase() === query.toLowerCase())
+    !cityLabels.some(c => c.toLowerCase() === query.toLowerCase())
 
   function handleSelect(city: string) {
     onChange(city)
