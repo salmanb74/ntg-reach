@@ -1,6 +1,6 @@
 const { schedule } = require('@netlify/functions')
 
-const handler = schedule('0 6 * * *', async () => {
+exports.handler = schedule('0 6 * * *', async () => {
   const appUrl = process.env.NEXT_PUBLIC_APP_URL
   if (!appUrl) {
     console.error('NEXT_PUBLIC_APP_URL not set')
@@ -27,5 +27,3 @@ const handler = schedule('0 6 * * *', async () => {
     return { statusCode: 500, body: err.message }
   }
 })
-
-module.exports = { handler }
