@@ -155,6 +155,11 @@ export default function PerformanceReport({ user, targets, closedLeads, allLeads
         const mrr        = convert(leadsInPeriod.reduce((s, l) => s + getMRR(l), 0))
         const revenue    = convert(leadsInPeriod.reduce((s, l) => s + getRevenueInPeriod(l, start, end), 0))
 
+        // Convert targets from input currency to view currency for fair comparison
+        const setupFeeTarget  = target.setup_fee_target ? convert(target.setup_fee_target) : null
+        const mrrTarget       = target.mrr_target       ? convert(target.mrr_target)       : null
+        const revenueTarget   = target.revenue_target   ? convert(target.revenue_target)   : null
+
         const now = new Date()
         const isActive  = now >= start && now <= end
         const isPast    = now > end
@@ -174,6 +179,7 @@ export default function PerformanceReport({ user, targets, closedLeads, allLeads
               <span className={`${styles.periodBadge} ${isActive ? styles.activeBadge : isPast ? styles.pastBadge : styles.futureBadge}`}>
                 {isActive ? 'Active' : isPast ? 'Completed' : 'Upcoming'}
               </span>
+              <span className={styles.currencyBadge}>{currency}</span>
             </div>
 
             <div className={styles.metricsGrid}>
@@ -189,39 +195,39 @@ export default function PerformanceReport({ user, targets, closedLeads, allLeads
                 </div>
               )}
 
-              {target.setup_fee_target && (
+              {setupFeeTarget && (
                 <div className={styles.metric}>
                   <div className={styles.metricHeader}>
                     <span className={styles.metricLabel}>Setup Fees</span>
                     <span className={styles.metricValues}>
-                      <strong>{fmt(setupFees, currency)}</strong> / {fmt(target.setup_fee_target, currency)}
+                      <strong>{fmt(setupFees, currency)}</strong> / {fmt(setupFeeTarget, currency)}
                     </span>
                   </div>
-                  <ProgressBar value={setupFees} target={target.setup_fee_target} />
+                  <ProgressBar value={setupFees} target={setupFeeTarget} />
                 </div>
               )}
 
-              {target.mrr_target && (
+              {mrrTarget && (
                 <div className={styles.metric}>
                   <div className={styles.metricHeader}>
                     <span className={styles.metricLabel}>MRR Added</span>
                     <span className={styles.metricValues}>
-                      <strong>{fmt(mrr, currency)}</strong> / {fmt(target.mrr_target, currency)}
+                      <strong>{fmt(mrr, currency)}</strong> / {fmt(mrrTarget, currency)}
                     </span>
                   </div>
-                  <ProgressBar value={mrr} target={target.mrr_target} color="var(--stage-won-bar)" />
+                  <ProgressBar value={mrr} target={mrrTarget} color="var(--stage-won-bar)" />
                 </div>
               )}
 
-              {target.revenue_target && (
+              {revenueTarget && (
                 <div className={styles.metric}>
                   <div className={styles.metricHeader}>
                     <span className={styles.metricLabel}>Revenue</span>
                     <span className={styles.metricValues}>
-                      <strong>{fmt(revenue, currency)}</strong> / {fmt(target.revenue_target, currency)}
+                      <strong>{fmt(revenue, currency)}</strong> / {fmt(revenueTarget, currency)}
                     </span>
                   </div>
-                  <ProgressBar value={revenue} target={target.revenue_target} color="var(--stage-proposal-bar)" />
+                  <ProgressBar value={revenue} target={revenueTarget} color="var(--stage-proposal-bar)" />
                 </div>
               )}
             </div>

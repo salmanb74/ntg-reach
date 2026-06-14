@@ -76,14 +76,14 @@ export default async function ReportsPage({
         {/* Tab nav */}
         <div className={styles.tabs}>
           <a
-            href={`/reports?rep=${selectedRepId}&tab=performance`}
+            href={`/reports?rep=${selectedRepId}&tab=performance&currency=${selectedCurrency}`}
             className={`${styles.tab} ${activeTab === 'performance' ? styles.activeTab : ''}`}
           >
             Performance
           </a>
           {canSeeAll && (
             <a
-              href={`/reports?rep=${selectedRepId}&tab=targets`}
+              href={`/reports?rep=${selectedRepId}&tab=targets&currency=${selectedCurrency}`}
               className={`${styles.tab} ${activeTab === 'targets' ? styles.activeTab : ''}`}
             >
               Manage Targets

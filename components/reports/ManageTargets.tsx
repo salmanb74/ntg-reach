@@ -125,7 +125,9 @@ export default function ManageTargets({ users, targets, selectedRepId, currency 
             </div>
           </div>
 
-          <div className={styles.formSubtitle}>Targets ({currency}) — leave blank to skip</div>
+          <div className={styles.formSubtitle}>
+            Targets — all amounts in <strong>{currency}</strong> (input currency)
+          </div>
           <div className={styles.formGrid}>
             <div className={styles.field}>
               <label className={styles.label}>Leads Closed</label>

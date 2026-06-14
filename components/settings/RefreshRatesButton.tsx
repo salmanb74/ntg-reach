@@ -16,7 +16,11 @@ export default function RefreshRatesButton() {
       const res = await fetch('/api/exchange-rates')
       const data = await res.json()
       if (!res.ok) throw new Error(data.error)
-      setMsg('Rates updated successfully')
+      if (data.source === 'previous_day') {
+        setMsg(`Copied rates from ${data.fromDate} (live API unavailable)`)
+      } else {
+        setMsg(`Rates updated for ${data.date} — ${data.pairs} pairs`)
+      }
       router.refresh()
     } catch (err: any) {
       setMsg(`Error: ${err.message}`)
