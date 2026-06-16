@@ -25,42 +25,33 @@ export default async function LeadsPage({ searchParams }: { searchParams: Search
   const from = (currentPage - 1) * PAGE_SIZE
   const to   = from + PAGE_SIZE - 1
 
-  // Count query (for pagination)
-  let countQuery = supabase.from('leads').select('*', { count: 'exact', head: true })
-  if (q?.trim()) {
-    countQuery = countQuery.or(
-      `contact_name.ilike.%${q}%,company_name.ilike.%${q}%,email.ilike.%${q}%,phone.ilike.%${q}%,city.ilike.%${q}%`
-    )
+  // Build filter helper
+  function applyFilters<T extends ReturnType<typeof supabase.from>>(query: T): T {
+    let q_ = query as any
+    if (q?.trim()) {
+      q_ = q_.or(
+        `contact_name.ilike.%${q}%,company_name.ilike.%${q}%,email.ilike.%${q}%,phone.ilike.%${q}%,city.ilike.%${q}%`
+      )
+    }
+    if (stage && stage !== 'all') q_ = q_.eq('stage', stage)
+    return q_
   }
-  if (stage && stage !== 'all') countQuery = countQuery.eq('stage', stage)
-  const { count: totalCount } = await countQuery
 
-  // Data query with pagination
-  let query = supabase.from('leads').select('*')
-  if (q?.trim()) {
-    query = query.or(
-      `contact_name.ilike.%${q}%,company_name.ilike.%${q}%,email.ilike.%${q}%,phone.ilike.%${q}%,city.ilike.%${q}%`
-    )
-  }
-  if (stage && stage !== 'all') query = query.eq('stage', stage)
-  if (sort === 'oldest')       query = query.order('created_at', { ascending: true })
-  else if (sort === 'name')    query = query.order('contact_name', { ascending: true })
-  else                         query = query.order('created_at', { ascending: false })
-  query = query.range(from, to)
+  // ── Parallel: paginated data (with count) + export data ────
+  let dataQuery = applyFilters(supabase.from('leads').select('*', { count: 'exact' }))
+  if (sort === 'oldest')    dataQuery = dataQuery.order('created_at', { ascending: true })
+  else if (sort === 'name') dataQuery = dataQuery.order('contact_name', { ascending: true })
+  else                      dataQuery = dataQuery.order('created_at', { ascending: false })
+  dataQuery = dataQuery.range(from, to)
 
-  const { data: leads } = await query
+  const exportQuery = applyFilters(supabase.from('leads').select('*'))
+
+  const [
+    { data: leads, count: totalCount },
+    { data: allLeads },
+  ] = await Promise.all([dataQuery, exportQuery])
 
   const totalPages = Math.ceil((totalCount ?? 0) / PAGE_SIZE)
-
-  // For export — fetch all matching (no pagination limit)
-  let exportQuery = supabase.from('leads').select('*')
-  if (q?.trim()) {
-    exportQuery = exportQuery.or(
-      `contact_name.ilike.%${q}%,company_name.ilike.%${q}%,email.ilike.%${q}%,phone.ilike.%${q}%,city.ilike.%${q}%`
-    )
-  }
-  if (stage && stage !== 'all') exportQuery = exportQuery.eq('stage', stage)
-  const { data: allLeads } = await exportQuery
 
   return (
     <>

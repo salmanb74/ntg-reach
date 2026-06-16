@@ -4,6 +4,7 @@ import Topbar from '@/components/layout/Topbar'
 import LeadActions from '@/components/leads/LeadActions'
 import Timeline from '@/components/leads/Timeline'
 import Link from 'next/link'
+import { getInputCurrency } from '@/lib/dataCache'
 import styles from './lead.module.css'
 
 export default async function LeadDetailPage({ params }: { params: { id: string } }) {
@@ -11,31 +12,23 @@ export default async function LeadDetailPage({ params }: { params: { id: string 
 
   const [
     { data: lead },
-    { data: currencySetting },
+    inputCurrency,
   ] = await Promise.all([
     supabase.from('leads').select('*').eq('id', params.id).single(),
-    supabase.from('app_settings').select('value').eq('key', 'input_currency').single(),
+    getInputCurrency(),
   ])
 
   if (!lead) notFound()
 
-  const inputCurrency = currencySetting?.value ?? 'PKR'
-
-  const { data: activities } = await supabase
-    .from('activities')
-    .select('*')
-    .eq('lead_id', lead.id)
-    .order('created_at', { ascending: false })
-
-  const { count: meetingCount } = await supabase
-    .from('meetings')
-    .select('*', { count: 'exact', head: true })
-    .eq('lead_id', lead.id)
-
-  const { count: emailCount } = await supabase
-    .from('emails')
-    .select('*', { count: 'exact', head: true })
-    .eq('lead_id', lead.id)
+  const [
+    { data: activities },
+    { count: meetingCount },
+    { count: emailCount },
+  ] = await Promise.all([
+    supabase.from('activities').select('*').eq('lead_id', lead.id).order('created_at', { ascending: false }),
+    supabase.from('meetings').select('*', { count: 'exact', head: true }).eq('lead_id', lead.id),
+    supabase.from('emails').select('*', { count: 'exact', head: true }).eq('lead_id', lead.id),
+  ])
 
   const initials = lead.contact_name.split(' ').map((n: string) => n[0]).join('').toUpperCase().slice(0, 2)
 

@@ -77,3 +77,12 @@
   .page { padding: 14px 16px; }
   .statsRow { grid-template-columns: repeat(2, 1fr); }
 }
+
+/* ─── Stat value modifiers ───────────────────────────────────── */
+.statSuccess { color: var(--color-success); }
+.statWarning { color: var(--color-warning); }
+.statLarge   { font-size: 20px; }
+
+/* ─── Chart flex variants ────────────────────────────────────── */
+.chartFlex1  { flex: 1; }
+.chartFlex14 { flex: 1.4; }

@@ -4,20 +4,31 @@ import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import styles from './SettingsNav.module.css'
 
+type UserRole = 'admin' | 'manager' | 'sales_rep'
+
+interface Props {
+  roles: UserRole[]
+}
+
 const NAV = [
-  { href: '/settings',              label: 'General',          icon: '⚙' },
-  { href: '/settings/users',        label: 'Users & Roles',    icon: '👥' },
-  { href: '/settings/enumerations', label: 'Lists & Values',   icon: '📋' },
-  { href: '/settings/contracts',    label: 'Contract Templates', icon: '📄' },
+  { href: '/settings',              label: 'General',            icon: '⚙',  roles: ['admin'] },
+  { href: '/settings/users',        label: 'Users & Roles',      icon: '👥', roles: ['admin'] },
+  { href: '/settings/enumerations', label: 'Lists & Values',     icon: '📋', roles: ['admin'] },
+  { href: '/settings/targets',      label: 'Targets',            icon: '🎯', roles: ['admin', 'manager'] },
+  { href: '/settings/contracts',    label: 'Contract Templates', icon: '📄', roles: ['admin', 'manager'] },
 ]
 
-export default function SettingsNav() {
+export default function SettingsNav({ roles }: Props) {
   const pathname = usePathname()
+
+  const visible = NAV.filter(item =>
+    item.roles.some(r => roles.includes(r as UserRole))
+  )
 
   return (
     <nav className={styles.nav}>
       <div className={styles.title}>Settings</div>
-      {NAV.map(item => (
+      {visible.map(item => (
         <Link
           key={item.href}
           href={item.href}

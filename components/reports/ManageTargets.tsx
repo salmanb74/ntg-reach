@@ -63,10 +63,11 @@ export default function ManageTargets({ users, targets, selectedRepId, currency 
         label:            form.label,
         start_date:       form.start_date,
         end_date:         form.end_date,
-        leads_target:     form.leads_target     ? parseInt(form.leads_target)          : null,
-        setup_fee_target: form.setup_fee_target ? parseFloat(form.setup_fee_target)    : null,
-        mrr_target:       form.mrr_target       ? parseFloat(form.mrr_target)          : null,
-        revenue_target:   form.revenue_target   ? parseFloat(form.revenue_target)      : null,
+        currency:         currency,
+        leads_target:     form.leads_target     ? parseInt(form.leads_target)       : null,
+        setup_fee_target: form.setup_fee_target ? parseFloat(form.setup_fee_target) : null,
+        mrr_target:       form.mrr_target       ? parseFloat(form.mrr_target)       : null,
+        revenue_target:   form.revenue_target   ? parseFloat(form.revenue_target)   : null,
       }
       if (editId) {
         await updateTarget(editId, data)
@@ -181,13 +182,14 @@ export default function ManageTargets({ users, targets, selectedRepId, currency 
                 {start.toLocaleDateString('en-GB', { day:'numeric', month:'short', year:'numeric' })}
                 {' → '}
                 {end.toLocaleDateString('en-GB', { day:'numeric', month:'short', year:'numeric' })}
+                {' · '}<strong>{t.currency ?? currency}</strong>
               </div>
             </div>
             <div className={styles.targetNums}>
               {t.leads_target     && <span>{t.leads_target} leads</span>}
-              {t.setup_fee_target && <span>{currency} {t.setup_fee_target.toLocaleString()} setup</span>}
-              {t.mrr_target       && <span>{currency} {t.mrr_target.toLocaleString()} MRR</span>}
-              {t.revenue_target   && <span>{currency} {t.revenue_target.toLocaleString()} revenue</span>}
+              {t.setup_fee_target && <span>{t.currency ?? currency} {t.setup_fee_target.toLocaleString()} setup</span>}
+              {t.mrr_target       && <span>{t.currency ?? currency} {t.mrr_target.toLocaleString()} MRR</span>}
+              {t.revenue_target   && <span>{t.currency ?? currency} {t.revenue_target.toLocaleString()} revenue</span>}
             </div>
             <div className={styles.targetActions}>
               {confirmDelete === t.id ? (

@@ -177,3 +177,27 @@
   border: 1px solid var(--color-border);
   letter-spacing: 0.5px;
 }
+
+.historyWarning {
+  font-size: 11px;
+  color: var(--color-warning, #92400e);
+  background: #fef3c7;
+  padding: 6px 10px;
+  border-radius: var(--radius-md);
+  border: 1px solid #fcd34d;
+}
+
+.progressBarSuccess { background: var(--color-success) !important; }
+.progressPctSuccess { color: var(--color-success); }
+
+.targetBadges {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+}
+
+.closedRepId {
+  flex: 1;
+  font-size: 12px;
+  color: var(--color-text-2);
+}

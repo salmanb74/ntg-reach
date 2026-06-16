@@ -6,25 +6,9 @@
   max-width: 1100px;
 }
 
-.tabs {
+.topBar {
   display: flex;
-  gap: 2px;
-  border-bottom: 1px solid var(--color-border);
-}
-
-.tab {
-  padding: 9px 18px;
-  font-size: 13px;
-  color: var(--color-text-2);
-  border-bottom: 2px solid transparent;
-  margin-bottom: -1px;
-  transition: color 0.15s;
-  text-decoration: none;
-}
-.tab:hover { color: var(--color-text); }
-
-.activeTab {
-  color: var(--color-primary);
-  border-bottom-color: var(--color-primary);
-  font-weight: 500;
+  align-items: center;
+  gap: 16px;
+  flex-wrap: wrap;
 }

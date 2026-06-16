@@ -73,9 +73,11 @@ export async function reorderEnumeration(id: string, direction: 'up' | 'down') {
 // ─── Users & Roles ────────────────────────────────────────────
 export async function updateUserRoles(userId: string, roles: UserRole[]) {
   const supabase = createClient()
+  // Ensure at least one role always set
+  const finalRoles = roles.length === 0 ? ['sales_rep' as UserRole] : roles
   const { error } = await supabase
     .from('profiles')
-    .update({ roles })
+    .update({ roles: finalRoles })
     .eq('id', userId)
   if (error) throw new Error(error.message)
   revalidatePath('/settings/users')

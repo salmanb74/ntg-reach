@@ -3,6 +3,7 @@ import { redirect } from 'next/navigation'
 import Sidebar from '@/components/layout/Sidebar'
 import KeepAlive from '@/components/layout/KeepAlive'
 import styles from './layout.module.css'
+import type { UserRole } from '@/lib/roles'
 
 export default async function AppLayout({
   children,
@@ -14,17 +15,18 @@ export default async function AppLayout({
 
   if (!user) redirect('/login')
 
-  // Fetch profile for display name
   const { data: profile } = await supabase
     .from('profiles')
-    .select('full_name')
+    .select('full_name, roles')
     .eq('id', user.id)
     .single()
+
+  const roles = (profile?.roles ?? []) as UserRole[]
 
   return (
     <div className={styles.shell}>
       <KeepAlive />
-      <Sidebar />
+      <Sidebar roles={roles} />
       <main className={styles.main}>
         {children}
       </main>

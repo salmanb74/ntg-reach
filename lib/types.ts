@@ -159,6 +159,7 @@ export interface Target {
   label:            string
   start_date:       string
   end_date:         string
+  currency:         string
   leads_target:     number | null
   setup_fee_target: number | null
   mrr_target:       number | null
