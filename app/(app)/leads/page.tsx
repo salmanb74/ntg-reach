@@ -25,26 +25,24 @@ export default async function LeadsPage({ searchParams }: { searchParams: Search
   const from = (currentPage - 1) * PAGE_SIZE
   const to   = from + PAGE_SIZE - 1
 
-  // Build filter helper
-  function applyFilters<T extends ReturnType<typeof supabase.from>>(query: T): T {
-    let q_ = query as any
-    if (q?.trim()) {
-      q_ = q_.or(
-        `contact_name.ilike.%${q}%,company_name.ilike.%${q}%,email.ilike.%${q}%,phone.ilike.%${q}%,city.ilike.%${q}%`
-      )
-    }
-    if (stage && stage !== 'all') q_ = q_.eq('stage', stage)
-    return q_
+  // ── Parallel: paginated data (with count) + export data ────
+  let dataQuery = supabase.from('leads').select('*', { count: 'exact' })
+  let exportQuery = supabase.from('leads').select('*')
+
+  if (q?.trim()) {
+    const filter = `contact_name.ilike.%${q}%,company_name.ilike.%${q}%,email.ilike.%${q}%,phone.ilike.%${q}%,city.ilike.%${q}%`
+    dataQuery   = dataQuery.or(filter)
+    exportQuery = exportQuery.or(filter)
+  }
+  if (stage && stage !== 'all') {
+    dataQuery   = dataQuery.eq('stage', stage)
+    exportQuery = exportQuery.eq('stage', stage)
   }
 
-  // ── Parallel: paginated data (with count) + export data ────
-  let dataQuery = applyFilters(supabase.from('leads').select('*', { count: 'exact' }))
   if (sort === 'oldest')    dataQuery = dataQuery.order('created_at', { ascending: true })
   else if (sort === 'name') dataQuery = dataQuery.order('contact_name', { ascending: true })
   else                      dataQuery = dataQuery.order('created_at', { ascending: false })
   dataQuery = dataQuery.range(from, to)
-
-  const exportQuery = applyFilters(supabase.from('leads').select('*'))
 
   const [
     { data: leads, count: totalCount },
