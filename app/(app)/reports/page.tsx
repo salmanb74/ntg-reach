@@ -1,10 +1,10 @@
 import { createClient } from '@/lib/supabase/server'
-import { getCurrentProfile, isManager } from '@/lib/roles'
+import { isManager } from '@/lib/roles'
 import Topbar from '@/components/layout/Topbar'
 import RepSelector from '@/components/reports/RepSelector'
 import PerformanceReport from '@/components/reports/PerformanceReport'
 import CurrencySwitcher from '@/components/ui/CurrencySwitcher'
-import { getAppSettings, getCurrentRates, getRecentRateHistory } from '@/lib/dataCache'
+import { getAppSettings, getCurrentRates, getRecentRateHistory, getCachedProfile } from '@/lib/dataCache'
 import styles from './reports.module.css'
 
 export default async function ReportsPage({
@@ -13,10 +13,10 @@ export default async function ReportsPage({
   searchParams: { rep?: string; currency?: string }
 }) {
   const supabase  = createClient()
-  const profile   = await getCurrentProfile()
+  const profile   = await getCachedProfile()
   const canSeeAll = isManager(profile)
 
-  // ── Parallel fetch — settings/rates from cache ─────────────
+  // ── Parallel fetch — profile/settings/rates from cache ────────
   const [
     { data: allUsers },
     settingsMap,
@@ -40,24 +40,19 @@ export default async function ReportsPage({
     ? searchParams.currency
     : viewCurrencies[0]
 
-  // ── Rate history — only fetch pairs we need ────────────────
-  const historyList = await getRecentRateHistory(inputCurrency, viewCurrencies)
-
-  // ── Rep-specific data (parallel) ───────────────────────────
-  const [
-    { data: targets },
-    { data: closedLeads },
-    { data: allLeads },
-  ] = await Promise.all([
-    supabase.from('targets').select('*').eq('user_id', selectedRepId)
-      .order('start_date', { ascending: false }),
-    supabase.from('leads')
-      .select('id, stage, quoted_setup_fee, quoted_mrr, payment_frequency, payment_start_date, closed_at, created_by')
-      .eq('stage', 'closed_won').eq('created_by', selectedRepId).not('closed_at', 'is', null),
+  // ── Rate history + rep leads — merged single leads query ──────
+  const [historyList, { data: repLeads }, { data: targets }] = await Promise.all([
+    getRecentRateHistory(inputCurrency, viewCurrencies),
     supabase.from('leads')
       .select('id, stage, quoted_setup_fee, quoted_mrr, payment_frequency, payment_start_date, closed_at, created_by')
       .eq('created_by', selectedRepId),
+    supabase.from('targets').select('*').eq('user_id', selectedRepId)
+      .order('start_date', { ascending: false }),
   ])
+
+  // Filter client-side instead of two separate queries
+  const allLeads    = repLeads ?? []
+  const closedLeads = allLeads.filter(l => l.stage === 'closed_won' && l.closed_at)
 
   const selectedUser = repUsers.find(u => u.id === selectedRepId) ?? repUsers[0]
 
@@ -81,8 +76,8 @@ export default async function ReportsPage({
         <PerformanceReport
           user={selectedUser}
           targets={targets ?? []}
-          closedLeads={closedLeads ?? []}
-          allLeads={allLeads ?? []}
+          closedLeads={closedLeads}
+          allLeads={allLeads}
           currency={selectedCurrency}
           inputCurrency={inputCurrency}
           rates={ratesList}

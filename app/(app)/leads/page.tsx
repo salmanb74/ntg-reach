@@ -25,18 +25,14 @@ export default async function LeadsPage({ searchParams }: { searchParams: Search
   const from = (currentPage - 1) * PAGE_SIZE
   const to   = from + PAGE_SIZE - 1
 
-  // ── Parallel: paginated data (with count) + export data ────
   let dataQuery = supabase.from('leads').select('*', { count: 'exact' })
-  let exportQuery = supabase.from('leads').select('*')
 
   if (q?.trim()) {
     const filter = `contact_name.ilike.%${q}%,company_name.ilike.%${q}%,email.ilike.%${q}%,phone.ilike.%${q}%,city.ilike.%${q}%`
-    dataQuery   = dataQuery.or(filter)
-    exportQuery = exportQuery.or(filter)
+    dataQuery = dataQuery.or(filter)
   }
   if (stage && stage !== 'all') {
-    dataQuery   = dataQuery.eq('stage', stage)
-    exportQuery = exportQuery.eq('stage', stage)
+    dataQuery = dataQuery.eq('stage', stage)
   }
 
   if (sort === 'oldest')    dataQuery = dataQuery.order('created_at', { ascending: true })
@@ -44,11 +40,7 @@ export default async function LeadsPage({ searchParams }: { searchParams: Search
   else                      dataQuery = dataQuery.order('created_at', { ascending: false })
   dataQuery = dataQuery.range(from, to)
 
-  const [
-    { data: leads, count: totalCount },
-    { data: allLeads },
-  ] = await Promise.all([dataQuery, exportQuery])
-
+  const { data: leads, count: totalCount } = await dataQuery
   const totalPages = Math.ceil((totalCount ?? 0) / PAGE_SIZE)
 
   return (
@@ -76,7 +68,7 @@ export default async function LeadsPage({ searchParams }: { searchParams: Search
             <button type="submit" className={styles.searchBtn}>Search</button>
           </form>
           <div className={styles.actions}>
-            <LeadsExportButton leads={allLeads ?? []} />
+            <LeadsExportButton q={q} stage={stage} />
             <Link href="/leads/import">
               <Button size="sm" variant="outline">
                 <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">

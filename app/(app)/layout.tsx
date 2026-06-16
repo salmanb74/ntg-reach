@@ -1,27 +1,17 @@
-import { createClient } from '@/lib/supabase/server'
 import { redirect } from 'next/navigation'
 import Sidebar from '@/components/layout/Sidebar'
 import KeepAlive from '@/components/layout/KeepAlive'
-import styles from './layout.module.css'
+import { getUser, getCachedProfile } from '@/lib/dataCache'
 import type { UserRole } from '@/lib/roles'
+import styles from './layout.module.css'
 
-export default async function AppLayout({
-  children,
-}: {
-  children: React.ReactNode
-}) {
-  const supabase = createClient()
-  const { data: { user } } = await supabase.auth.getUser()
-
+export default async function AppLayout({ children }: { children: React.ReactNode }) {
+  const user = await getUser()
   if (!user) redirect('/login')
 
-  const { data: profile } = await supabase
-    .from('profiles')
-    .select('full_name, roles')
-    .eq('id', user.id)
-    .single()
-
-  const roles = (profile?.roles ?? []) as UserRole[]
+  // Profile is cached — no extra DB call if pages also call getCachedProfile
+  const profile = await getCachedProfile()
+  const roles   = (profile?.roles ?? []) as UserRole[]
 
   return (
     <div className={styles.shell}>

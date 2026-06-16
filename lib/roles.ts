@@ -14,20 +14,11 @@ export const ROLE_LABELS: Record<UserRole, string> = {
   sales_rep: 'Sales Rep',
 }
 
-// ─── Server-only helpers — only import in Server Components ───
+// ─── Server-only helpers ───────────────────────────────────────
 export async function getCurrentProfile(): Promise<UserProfile | null> {
-  const { createClient } = await import('@/lib/supabase/server')
-  const supabase = createClient()
-  const { data: { user } } = await supabase.auth.getUser()
-  if (!user) return null
-
-  const { data } = await supabase
-    .from('profiles')
-    .select('id, full_name, email, roles')
-    .eq('id', user.id)
-    .single()
-
-  return data as UserProfile | null
+  // Uses the cached version to avoid duplicate DB calls per request
+  const { getCachedProfile } = await import('@/lib/dataCache')
+  return getCachedProfile()
 }
 
 export function hasRole(profile: UserProfile | null, role: UserRole): boolean {

@@ -20,15 +20,12 @@ export default async function LeadDetailPage({ params }: { params: { id: string 
 
   if (!lead) notFound()
 
-  const [
-    { data: activities },
-    { count: meetingCount },
-    { count: emailCount },
-  ] = await Promise.all([
-    supabase.from('activities').select('*').eq('lead_id', lead.id).order('created_at', { ascending: false }),
-    supabase.from('meetings').select('*', { count: 'exact', head: true }).eq('lead_id', lead.id),
-    supabase.from('emails').select('*', { count: 'exact', head: true }).eq('lead_id', lead.id),
-  ])
+  const { data: activities } = await supabase
+    .from('activities').select('*').eq('lead_id', lead.id).order('created_at', { ascending: false })
+
+  // Derive counts from activities — no extra DB calls needed
+  const meetingCount = (activities ?? []).filter(a => a.type.includes('meeting')).length
+  const emailCount   = (activities ?? []).filter(a => a.type.includes('email')).length
 
   const initials = lead.contact_name.split(' ').map((n: string) => n[0]).join('').toUpperCase().slice(0, 2)
 

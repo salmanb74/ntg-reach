@@ -93,5 +93,6 @@
   cursor: pointer;
   font-family: var(--font-sans);
   transition: background 0.15s;
+  align-self: flex-start;
 }
 .saveBtn:hover { background: var(--color-primary-dark); }

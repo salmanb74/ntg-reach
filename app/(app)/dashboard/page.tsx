@@ -7,7 +7,7 @@ import ActivityBreakdown from '@/components/analytics/ActivityBreakdown'
 import ConversionStats from '@/components/analytics/ConversionStats'
 import CurrencySwitcher from '@/components/ui/CurrencySwitcher'
 import { convertAmount, formatCurrency } from '@/lib/currency'
-import { getAppSettings, getCurrentRates } from '@/lib/dataCache'
+import { getAppSettings, getCurrentRates, getCachedProfile } from '@/lib/dataCache'
 import styles from './dashboard.module.css'
 
 export default async function DashboardPage({
@@ -19,17 +19,17 @@ export default async function DashboardPage({
   const eightWeeksAgo = new Date()
   eightWeeksAgo.setDate(eightWeeksAgo.getDate() - 56)
 
-  // ── Parallel fetch — settings/rates from cache ─────────────
+  // ── Parallel fetch — user/settings/rates from cache ──────────
   const [
-    { data: { user } },
+    profile,
     settingsMap,
     ratesList,
-    { data: allLeads },        // single leads query with all needed columns
+    { data: allLeads },
     { data: activities },
     { count: meetingCount },
     { count: emailCount },
   ] = await Promise.all([
-    supabase.auth.getUser(),
+    getCachedProfile(),
     getAppSettings(),
     getCurrentRates(),
     supabase.from('leads').select(
@@ -40,8 +40,7 @@ export default async function DashboardPage({
     supabase.from('emails').select('*', { count: 'exact', head: true }),
   ])
 
-  const { data: profile } = await supabase
-    .from('profiles').select('full_name').eq('id', user!.id).single()
+  const userName = profile?.full_name ?? profile?.email ?? 'User'
 
   // ── Currency ───────────────────────────────────────────────
   const inputCurrency  = settingsMap['input_currency']  ?? 'PKR'
@@ -124,7 +123,6 @@ export default async function DashboardPage({
   }))
 
   const displayPipeline = toDisplay(pipelineValue)
-  const userName = profile?.full_name ?? user?.email ?? 'User'
 
   return (
     <>
