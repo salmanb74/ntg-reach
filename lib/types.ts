@@ -7,6 +7,7 @@ export type PipelineStage =
   | 'negotiation'
   | 'closed_won'
   | 'closed_lost'
+  | 'early_exit'
 
 export const PIPELINE_STAGES: PipelineStage[] = [
   'new',
@@ -107,6 +108,7 @@ export interface Lead {
   closed_at:          string | null
   payment_start_date: string | null
   payment_frequency:  'monthly' | 'annual' | null
+  lost_reason: string | null
   created_at: string
   updated_at: string
 }
