@@ -34,14 +34,20 @@ export default function DealValueModal({
   const [mrr, setMrr] = useState(existingMrr?.toString() ?? '')
   const [frequency, setFrequency] = useState<'monthly' | 'annual'>('monthly')
   const [paymentDate, setPaymentDate] = useState('')
+  const [lostReason, setLostReason] = useState('')
   const [error, setError] = useState<string | null>(null)
   const [isPending, startTransition] = useTransition()
 
-  const isClosing = newStage === 'closed_won' || newStage === 'closed_lost'
+  const isClosing  = newStage === 'closed_won' || newStage === 'closed_lost'
+  const isLost     = newStage === 'closed_lost'
 
   async function handleSave() {
     if (!setupFee && !mrr) {
       setError('Please enter at least one value — setup fee or monthly recurring.')
+      return
+    }
+    if (isLost && !lostReason.trim()) {
+      setError('Please add a note explaining why this deal was lost.')
       return
     }
     setError(null)
@@ -50,11 +56,12 @@ export default function DealValueModal({
       try {
         await updateLead(leadId, {
           stage:              newStage,
-          quoted_setup_fee:   setupFee   ? parseFloat(setupFee)   : null,
-          quoted_mrr:         mrr        ? parseFloat(mrr)        : null,
+          quoted_setup_fee:   setupFee ? parseFloat(setupFee) : null,
+          quoted_mrr:         mrr      ? parseFloat(mrr)      : null,
           payment_frequency:  frequency,
           payment_start_date: paymentDate ? new Date(paymentDate).toISOString() : null,
           closed_at:          isClosing   ? new Date().toISOString() : null,
+          lost_reason:        isLost ? lostReason.trim() : null,
         })
         onSaved()
         onClose()
@@ -65,9 +72,16 @@ export default function DealValueModal({
   }
 
   async function handleSkip() {
-    // Still move the stage, just without deal values
+    if (isLost && !lostReason.trim()) {
+      setError('Please add a note explaining why this deal was lost.')
+      return
+    }
     startTransition(async () => {
-      await updateLead(leadId, { stage: newStage })
+      await updateLead(leadId, {
+        stage: newStage,
+        lost_reason: isLost ? lostReason.trim() : null,
+        closed_at: isClosing ? new Date().toISOString() : null,
+      })
       onSaved()
       onClose()
     })
@@ -83,7 +97,7 @@ export default function DealValueModal({
           {leadName}
         </div>
 
-        <p style={{ fontSize: 12, color: 'var(--color-text-2)', lineHeight: 1.5 }}>
+        <p className={styles.helpText}>
           Record the quoted deal value for pipeline tracking. Currency: <strong>{currency}</strong>
         </p>
 
@@ -91,9 +105,7 @@ export default function DealValueModal({
           <div className={styles.field}>
             <label className={styles.label}>Setup Fee ({currency})</label>
             <input
-              type="number"
-              min="0"
-              step="0.01"
+              type="number" min="0" step="0.01"
               className={styles.input}
               value={setupFee}
               onChange={e => setSetupFee(e.target.value)}
@@ -104,9 +116,7 @@ export default function DealValueModal({
           <div className={styles.field}>
             <label className={styles.label}>Recurring Fee ({currency})</label>
             <input
-              type="number"
-              min="0"
-              step="0.01"
+              type="number" min="0" step="0.01"
               className={styles.input}
               value={mrr}
               onChange={e => setMrr(e.target.value)}
@@ -141,22 +151,34 @@ export default function DealValueModal({
         </div>
 
         {frequency === 'annual' && mrr && (
-          <div style={{ fontSize: 11, color: 'var(--color-text-2)', background: 'var(--color-surface-2)', padding: '7px 10px', borderRadius: 'var(--radius-md)' }}>
+          <div className={styles.annualHint}>
             Annual amount: {currency} {(parseFloat(mrr) || 0).toLocaleString()} → MRR: {currency} {((parseFloat(mrr) || 0) / 12).toFixed(2)}/month
           </div>
         )}
 
+        <div className={styles.field}>
+          <label className={styles.label}>
+            {isLost ? 'Reason Lost' : 'Note'} {isLost && <span className={styles.required}>*</span>}
+            {!isLost && <span className={styles.optional}>(optional)</span>}
+          </label>
+          <textarea
+            className={styles.textarea}
+            value={lostReason}
+            onChange={e => setLostReason(e.target.value)}
+            placeholder={isLost
+              ? 'e.g. Went with a competitor, budget cut, project cancelled…'
+              : 'Any additional context…'}
+            rows={3}
+          />
+        </div>
+
         {error && <div className={styles.error}>{error}</div>}
 
         <div className={styles.footer}>
-          <button
-            onClick={handleSkip}
-            disabled={isPending}
-            style={{ background: 'none', border: 'none', fontSize: 12, color: 'var(--color-text-3)', cursor: 'pointer', fontFamily: 'var(--font-sans)' }}
-          >
+          <button onClick={handleSkip} disabled={isPending} className={styles.skipBtn}>
             Skip — move stage without recording value
           </button>
-          <div style={{ display: 'flex', gap: 8 }}>
+          <div className={styles.footerActions}>
             <Button variant="outline" size="sm" onClick={onClose} disabled={isPending}>Cancel</Button>
             <Button size="sm" onClick={handleSave} disabled={isPending}>
               {isPending ? 'Saving…' : 'Save & Move Stage'}

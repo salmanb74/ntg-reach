@@ -1,5 +1,5 @@
 'use client'
-
+import EarlyExitModal from '@/components/modals/EarlyExitModal'
 import { useState, useTransition } from 'react'
 import { useRouter } from 'next/navigation'
 import EmailModal from '@/components/modals/EmailModal'
@@ -29,11 +29,17 @@ export default function LeadActions({ lead, inputCurrency = 'PKR' }: LeadActions
   const [stage, setStage] = useState<PipelineStage>(lead.stage)
   const [stageLoading, setStageLoading] = useState(false)
   const [pendingStage, setPendingStage] = useState<PipelineStage | null>(null)
+  const [pendingEarlyExit, setPendingEarlyExit] = useState(false)
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
   const [isPending, startTransition] = useTransition()
 
   async function handleStageChange(newStage: PipelineStage) {
     if (newStage === stage) return
+
+	if (newStage === 'early_exit') {
+	  setPendingEarlyExit(true)
+	  return
+	}
 
     // Show deal value modal for proposal_sent and beyond
     if (DEAL_VALUE_STAGES.has(newStage)) {
@@ -226,6 +232,14 @@ export default function LeadActions({ lead, inputCurrency = 'PKR' }: LeadActions
           onSaved={handleDealSaved}
         />
       )}
+	  {pendingEarlyExit && (
+		  <EarlyExitModal
+			leadId={lead.id}
+			leadName={lead.contact_name}
+			onClose={() => setPendingEarlyExit(false)}
+			onSaved={() => { setStage('early_exit'); router.refresh() }}
+		  />
+		)}
     </>
   )
 }

@@ -16,6 +16,7 @@ export const PIPELINE_STAGES: PipelineStage[] = [
   'negotiation',
   'closed_won',
   'closed_lost',
+  'early_exit'
 ]
 
 export const STAGE_LABELS: Record<PipelineStage, string> = {
@@ -26,6 +27,7 @@ export const STAGE_LABELS: Record<PipelineStage, string> = {
   negotiation:    'Negotiation',
   closed_won:     'Closed Won',
   closed_lost:    'Closed Lost',
+  early_exit:    'Early Exit',
 }
 
 // Maps each stage to its CSS variable names from theme.css
@@ -37,6 +39,7 @@ export const STAGE_CSS: Record<PipelineStage, string> = {
   negotiation:    'negotiation',
   closed_won:     'won',
   closed_lost:    'lost',
+  early_exit:    'early_exit',
 }
 
 // ─── Activity Types ───────────────────────────────────────────────────

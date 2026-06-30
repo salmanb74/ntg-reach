@@ -22,6 +22,7 @@ export interface LeadFormData {
   closed_at?:         string | null
   payment_start_date?: string | null
   payment_frequency?: 'monthly' | 'annual' | null
+lost_reason?: string | null
 }
 
 export async function createLead(data: LeadFormData) {

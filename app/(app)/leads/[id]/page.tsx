@@ -1,3 +1,4 @@
+import LostReasonCard from '@/components/leads/LostReasonCard'
 import { createClient } from '@/lib/supabase/server'
 import { notFound } from 'next/navigation'
 import Topbar from '@/components/layout/Topbar'
@@ -134,7 +135,7 @@ export default async function LeadDetailPage({ params }: { params: { id: string 
                 Edit Lead
               </Link>
             </div>
-
+            <LostReasonCard stage={lead.stage} lostReason={lead.lost_reason} closedAt={lead.closed_at} />
             {lead.notes && (
               <div className={styles.notesCard}>
                 <div className={styles.notesLabel}>Notes</div>
