@@ -29,6 +29,7 @@ export default function ProfileClient({ profile }: { profile: Profile | null }) 
   const [nameMsg, setNameMsg] = useState<string | null>(null)
   const [pwMsg, setPwMsg] = useState<string | null>(null)
   const [isPending, startTransition] = useTransition()
+  const [isSigningOut, setIsSigningOut] = useState(false)
 
   const initials = fullName
     ? fullName.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2)
@@ -73,6 +74,14 @@ export default function ProfileClient({ profile }: { profile: Profile | null }) 
         setTimeout(() => setPwMsg(null), 2000)
       }
     })
+  }
+
+  async function handleSignOut() {
+    setIsSigningOut(true)
+    const supabase = createClient()
+    await supabase.auth.signOut()
+    router.push('/login')
+    router.refresh()
   }
 
   return (
@@ -145,6 +154,18 @@ export default function ProfileClient({ profile }: { profile: Profile | null }) 
           disabled={isPending || !newPassword || !confirmPassword}
         >
           Update Password
+        </button>
+      </div>
+
+      {/* Account / Sign out */}
+      <div className={styles.section}>
+        <div className={styles.sectionTitle}>Account</div>
+        <button
+          className={styles.logoutBtn}
+          onClick={handleSignOut}
+          disabled={isSigningOut}
+        >
+          {isSigningOut ? 'Signing out…' : 'Log Out'}
         </button>
       </div>
     </div>

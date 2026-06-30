@@ -93,3 +93,24 @@
 }
 .saveBtn:hover:not(:disabled) { background: var(--color-primary-dark); }
 .saveBtn:disabled { opacity: 0.5; cursor: not-allowed; }
+
+.logoutBtn {
+  padding: 8px 16px;
+  background: var(--color-error-bg);
+  color: var(--color-error);
+  border: 1px solid var(--color-primary-border);
+  border-radius: var(--radius-md);
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  font-family: var(--font-sans);
+  transition: background 0.15s, color 0.15s;
+}
+.logoutBtn:hover:not(:disabled) {
+  background: var(--color-error);
+  color: white;
+}
+.logoutBtn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
