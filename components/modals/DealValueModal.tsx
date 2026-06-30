@@ -42,10 +42,6 @@ export default function DealValueModal({
   const isLost     = newStage === 'closed_lost'
 
   async function handleSave() {
-    if (!setupFee && !mrr) {
-      setError('Please enter at least one value — setup fee or monthly recurring.')
-      return
-    }
     if (isLost && !lostReason.trim()) {
       setError('Please add a note explaining why this deal was lost.')
       return
@@ -71,22 +67,6 @@ export default function DealValueModal({
     })
   }
 
-  async function handleSkip() {
-    if (isLost && !lostReason.trim()) {
-      setError('Please add a note explaining why this deal was lost.')
-      return
-    }
-    startTransition(async () => {
-      await updateLead(leadId, {
-        stage: newStage,
-        lost_reason: isLost ? lostReason.trim() : null,
-        closed_at: isClosing ? new Date().toISOString() : null,
-      })
-      onSaved()
-      onClose()
-    })
-  }
-
   return (
     <Modal title={`Moving to ${STAGE_LABELS[newStage] ?? newStage}`} onClose={onClose} width={460}>
       <div className={styles.form}>
@@ -103,7 +83,9 @@ export default function DealValueModal({
 
         <div className={styles.twoCol}>
           <div className={styles.field}>
-            <label className={styles.label}>Setup Fee ({currency})</label>
+            <label className={styles.label}>
+              Setup Fee ({currency}) <span className={styles.optional}>(optional)</span>
+            </label>
             <input
               type="number" min="0" step="0.01"
               className={styles.input}
@@ -114,7 +96,9 @@ export default function DealValueModal({
             />
           </div>
           <div className={styles.field}>
-            <label className={styles.label}>Recurring Fee ({currency})</label>
+            <label className={styles.label}>
+              Recurring Fee ({currency}) <span className={styles.optional}>(optional)</span>
+            </label>
             <input
               type="number" min="0" step="0.01"
               className={styles.input}
@@ -174,16 +158,11 @@ export default function DealValueModal({
 
         {error && <div className={styles.error}>{error}</div>}
 
-        <div className={styles.footer}>
-          <button onClick={handleSkip} disabled={isPending} className={styles.skipBtn}>
-            Skip — move stage without recording value
-          </button>
-          <div className={styles.footerActions}>
-            <Button variant="outline" size="sm" onClick={onClose} disabled={isPending}>Cancel</Button>
-            <Button size="sm" onClick={handleSave} disabled={isPending}>
-              {isPending ? 'Saving…' : 'Save & Move Stage'}
-            </Button>
-          </div>
+        <div className={styles.footerSimple}>
+          <Button variant="outline" size="sm" onClick={onClose} disabled={isPending}>Cancel</Button>
+          <Button size="sm" onClick={handleSave} disabled={isPending}>
+            {isPending ? 'Saving…' : 'Save & Move Stage'}
+          </Button>
         </div>
       </div>
     </Modal>
