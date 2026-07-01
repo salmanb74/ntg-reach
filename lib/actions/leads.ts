@@ -19,6 +19,8 @@ export interface LeadFormData {
   quoted_setup_fee?:  number | null
   quoted_mrr?:        number | null
   deal_currency?:     string
+  discount?:          number | null
+  tax_rate?:          number | null
   closed_at?:         string | null
   payment_start_date?: string | null
   payment_frequency?: 'monthly' | 'annual' | null

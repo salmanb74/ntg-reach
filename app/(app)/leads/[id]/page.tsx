@@ -1,4 +1,5 @@
 import LostReasonCard from '@/components/leads/LostReasonCard'
+import DealPanel from '@/components/leads/DealPanel'
 import { createClient } from '@/lib/supabase/server'
 import { notFound } from 'next/navigation'
 import Topbar from '@/components/layout/Topbar'
@@ -14,9 +15,15 @@ export default async function LeadDetailPage({ params }: { params: { id: string 
   const [
     { data: lead },
     inputCurrency,
+    { data: currencies },
   ] = await Promise.all([
     supabase.from('leads').select('*').eq('id', params.id).single(),
     getInputCurrency(),
+    supabase.from('enumerations')
+      .select('value, label')
+      .eq('category', 'currency')
+      .eq('is_active', true)
+      .order('sort_order'),
   ])
 
   if (!lead) notFound()
@@ -29,29 +36,6 @@ export default async function LeadDetailPage({ params }: { params: { id: string 
   const emailCount   = (activities ?? []).filter(a => a.type.includes('email')).length
 
   const initials = lead.contact_name.split(' ').map((n: string) => n[0]).join('').toUpperCase().slice(0, 2)
-
-  // Activity type helpers
-  function getActivityTypeKey(type: string) {
-    if (type.includes('email'))     return 'email'
-    if (type.includes('whatsapp'))  return 'whatsapp'
-    if (type.includes('meeting'))   return 'meeting'
-    if (type.includes('call'))      return 'call'
-    return 'note'
-  }
-
-  const ACTIVITY_ICONS: Record<string, string> = {
-    email: '✉', whatsapp: '💬', meeting: '📅', call: '📞', note: '📝'
-  }
-
-  const ACTIVITY_LABELS: Record<string, string> = {
-    email_outbound: 'Email sent',
-    email_inbound:  'Email received',
-    whatsapp_log:   'WhatsApp note',
-    call:           'Call logged',
-    meeting:        'Meeting',
-    note:           'Note',
-    stage_change:   'Stage changed',
-  }
 
   return (
     <>
@@ -135,7 +119,23 @@ export default async function LeadDetailPage({ params }: { params: { id: string 
                 Edit Lead
               </Link>
             </div>
+
+            {/* Deal values panel */}
+            <DealPanel
+              leadId={lead.id}
+              dealCurrency={lead.deal_currency}
+              setupFee={lead.quoted_setup_fee}
+              recurringFee={lead.quoted_mrr}
+              frequency={lead.payment_frequency}
+              discount={lead.discount ?? null}
+              taxRate={lead.tax_rate ?? null}
+              paymentStartDate={lead.payment_start_date}
+              currencies={currencies ?? []}
+              inputCurrency={inputCurrency}
+            />
+
             <LostReasonCard stage={lead.stage} lostReason={lead.lost_reason} closedAt={lead.closed_at} />
+
             {lead.notes && (
               <div className={styles.notesCard}>
                 <div className={styles.notesLabel}>Notes</div>

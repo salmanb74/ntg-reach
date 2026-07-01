@@ -2,7 +2,7 @@
 
 import { useState, useTransition } from 'react'
 import dynamic from 'next/dynamic'
-import { QUOTATION_VARIABLES, substituteQuotationVariables } from '@/lib/quotations'
+import { QUOTATION_VARIABLES, QUOTATION_DEAL_KEYS, substituteQuotationVariables } from '@/lib/quotations'
 import { saveQuotation } from '@/lib/actions/quotations'
 import styles from '@/components/contracts/ContractGenerator.module.css'
 
@@ -128,7 +128,7 @@ export default function QuotationGenerator({ templates, lead, prefilled, inputCu
 
             <div className={styles.varsDivider}>Variable Values</div>
 
-            {QUOTATION_VARIABLES.map(v => (
+            {QUOTATION_VARIABLES.filter(v => !QUOTATION_DEAL_KEYS.has(v.key)).map(v => (
               <div key={v.key} className={styles.field}>
                 <label className={styles.label}>
                   {v.label}
@@ -142,6 +142,24 @@ export default function QuotationGenerator({ templates, lead, prefilled, inputCu
                 />
               </div>
             ))}
+
+            <div className={styles.varsDivider}>From Deal Panel (read-only)</div>
+
+            {QUOTATION_VARIABLES.filter(v => QUOTATION_DEAL_KEYS.has(v.key)).map(v => (
+              <div key={v.key} className={styles.field}>
+                <label className={styles.label}>
+                  {v.label}
+                  <code className={styles.varCode}>{`{{${v.key}}}`}</code>
+                </label>
+                <input
+                  className={`${styles.input} ${styles.readOnly}`}
+                  value={variables[v.key] ?? ''}
+                  readOnly
+                  tabIndex={-1}
+                />
+              </div>
+            ))}
+
           </div>
 
           <div className={styles.previewSnippet}>

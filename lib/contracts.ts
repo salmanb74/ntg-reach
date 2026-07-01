@@ -1,16 +1,23 @@
-// ─── Available template variables ─────────────────────────────
+// Variables that come from the lead's Deal Panel — pre-filled, read-only
+export const CONTRACT_DEAL_KEYS = new Set([
+  'setup_fee', 'recurring_fee', 'payment_frequency', 'currency',
+])
+
 export const CONTRACT_VARIABLES = [
-  { key: 'client_name',       label: 'Client Name',         example: 'Spice Garden Restaurants' },
-  { key: 'client_address',    label: 'Client Address',       example: '123 Main St, Karachi' },
-  { key: 'client_email',      label: 'Client Email',         example: 'ahmed@spice.pk' },
-  { key: 'contract_date',     label: 'Contract Date',        example: new Date().toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' }) },
-  { key: 'start_date',        label: 'Service Start Date',   example: '1 January 2026' },
-  { key: 'contract_term',     label: 'Contract Term',        example: '12 months' },
-  { key: 'setup_fee',         label: 'Setup Fee',            example: '50,000' },
-  { key: 'recurring_fee',     label: 'Recurring Fee',        example: '15,000' },
-  { key: 'payment_frequency', label: 'Payment Frequency',    example: 'month' },
-  { key: 'currency',          label: 'Currency',             example: 'PKR' },
+  // ── Manual entry ──────────────────────────────────────────────
+  { key: 'client_name',       label: 'Client Name',       example: 'Spice Garden Restaurants' },
+  { key: 'client_address',    label: 'Client Address',     example: '123 Main St, Karachi' },
+  { key: 'client_email',      label: 'Client Email',       example: 'ahmed@spice.pk' },
+  { key: 'contract_date',     label: 'Contract Date',      example: new Date().toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' }) },
+  { key: 'start_date',        label: 'Service Start Date', example: '1 January 2026' },
+  { key: 'contract_term',     label: 'Contract Term',      example: '12 months' },
+  // ── From Deal Panel (read-only) ────────────────────────────────
+  { key: 'currency',          label: 'Currency',           example: 'PKR' },
+  { key: 'setup_fee',         label: 'Setup Fee',          example: '50,000' },
+  { key: 'recurring_fee',     label: 'Recurring Fee',      example: '15,000' },
+  { key: 'payment_frequency', label: 'Payment Frequency',  example: 'month' },
 ]
+
 
 // ─── Substitute variables in HTML content ─────────────────────
 export function substituteVariables(

@@ -234,3 +234,22 @@
   .twoCol { grid-template-columns: 1fr; }
   .previewSnippet { position: static; }
 }
+
+.readOnly {
+  background: var(--color-surface-2);
+  color: var(--color-text-2);
+  cursor: default;
+  border-color: var(--color-border);
+}
+.readOnly:focus {
+  border-color: var(--color-border);
+  box-shadow: none;
+}
+
+.previewHighlight {
+  background: #fef3c7;
+  color: #92400e;
+  padding: 1px 4px;
+  border-radius: 3px;
+  font-size: 11px;
+}

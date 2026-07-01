@@ -2,7 +2,7 @@
 
 import { useState, useTransition } from 'react'
 import dynamic from 'next/dynamic'
-import { CONTRACT_VARIABLES, substituteVariables } from '@/lib/contracts'
+import { CONTRACT_VARIABLES, CONTRACT_DEAL_KEYS, substituteVariables } from '@/lib/contracts'
 import { saveContract } from '@/lib/actions/contracts'
 import styles from './ContractGenerator.module.css'
 
@@ -103,7 +103,6 @@ export default function ContractGenerator({ templates, lead, prefilled, inputCur
         </div>
 
         <div className={styles.twoCol}>
-          {/* Left: template selector + variable form */}
           <div className={styles.formPanel}>
             <div className={styles.field}>
               <label className={styles.label}>Template</label>
@@ -130,7 +129,7 @@ export default function ContractGenerator({ templates, lead, prefilled, inputCur
 
             <div className={styles.varsDivider}>Variable Values</div>
 
-            {CONTRACT_VARIABLES.map(v => (
+            {CONTRACT_VARIABLES.filter(v => !CONTRACT_DEAL_KEYS.has(v.key)).map(v => (
               <div key={v.key} className={styles.field}>
                 <label className={styles.label}>
                   {v.label}
@@ -144,13 +143,30 @@ export default function ContractGenerator({ templates, lead, prefilled, inputCur
                 />
               </div>
             ))}
+
+            <div className={styles.varsDivider}>From Deal Panel (read-only)</div>
+
+            {CONTRACT_VARIABLES.filter(v => CONTRACT_DEAL_KEYS.has(v.key)).map(v => (
+              <div key={v.key} className={styles.field}>
+                <label className={styles.label}>
+                  {v.label}
+                  <code className={styles.varCode}>{`{{${v.key}}}`}</code>
+                </label>
+                <input
+                  className={`${styles.input} ${styles.readOnly}`}
+                  value={variables[v.key] ?? ''}
+                  readOnly
+                  tabIndex={-1}
+                />
+              </div>
+            ))}
           </div>
 
-          {/* Right: live preview snippet */}
           <div className={styles.previewSnippet}>
             <div className={styles.previewLabel}>Live Preview</div>
             <div className={styles.previewNote}>
-              Full preview on next step. Variables shown as <span style={{ background: '#fef3c7', color: '#92400e', padding: '1px 4px', borderRadius: 3, fontSize: 11 }}>highlighted</span> if not filled.
+              Full preview on next step. Variables shown as{' '}
+              <span className={styles.previewHighlight}>highlighted</span> if not filled.
             </div>
             <div className={styles.varsSummary}>
               {CONTRACT_VARIABLES.map(v => (
@@ -194,10 +210,7 @@ export default function ContractGenerator({ templates, lead, prefilled, inputCur
           </button>
         </div>
 
-        <RichTextEditor
-          content={rendered}
-          onChange={setEditedContent}
-        />
+        <RichTextEditor content={rendered} onChange={setEditedContent} />
 
         <div className={styles.footer}>
           <button className={styles.saveBtn} onClick={handleSave} disabled={isPending}>
