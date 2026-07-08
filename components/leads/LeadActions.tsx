@@ -1,11 +1,13 @@
 'use client'
-import EarlyExitModal from '@/components/modals/EarlyExitModal'
+
 import { useState, useTransition } from 'react'
 import { useRouter } from 'next/navigation'
 import EmailModal from '@/components/modals/EmailModal'
 import WhatsAppModal from '@/components/modals/WhatsAppModal'
 import CallModal from '@/components/modals/CallModal'
+import SiteVisitModal from '@/components/modals/SiteVisitModal'
 import DealValueModal from '@/components/modals/DealValueModal'
+import EarlyExitModal from '@/components/modals/EarlyExitModal'
 import Button from '@/components/ui/Button'
 import { updateLead, deleteLead } from '@/lib/actions/leads'
 import { PIPELINE_STAGES, STAGE_LABELS, type Lead, type PipelineStage } from '@/lib/types'
@@ -16,38 +18,36 @@ const DEAL_VALUE_STAGES = new Set<PipelineStage>([
   'proposal_sent', 'negotiation', 'closed_won', 'closed_lost'
 ])
 
-type ModalType = 'email' | 'whatsapp' | 'call' | null
+type ModalType = 'email' | 'whatsapp' | 'call' | 'visit' | null
 
 interface LeadActionsProps {
-  lead: Lead
+  lead:          Lead
   inputCurrency?: string
 }
 
 export default function LeadActions({ lead, inputCurrency = 'PKR' }: LeadActionsProps) {
   const router = useRouter()
-  const [modal, setModal] = useState<ModalType>(null)
-  const [stage, setStage] = useState<PipelineStage>(lead.stage)
-  const [stageLoading, setStageLoading] = useState(false)
-  const [pendingStage, setPendingStage] = useState<PipelineStage | null>(null)
-  const [pendingEarlyExit, setPendingEarlyExit] = useState(false)
-  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
-  const [isPending, startTransition] = useTransition()
+  const [modal,               setModal]               = useState<ModalType>(null)
+  const [stage,               setStage]               = useState<PipelineStage>(lead.stage)
+  const [stageLoading,        setStageLoading]        = useState(false)
+  const [pendingStage,        setPendingStage]        = useState<PipelineStage | null>(null)
+  const [pendingEarlyExit,    setPendingEarlyExit]    = useState(false)
+  const [showDeleteConfirm,   setShowDeleteConfirm]   = useState(false)
+  const [isPending,           startTransition]        = useTransition()
 
   async function handleStageChange(newStage: PipelineStage) {
     if (newStage === stage) return
 
-	if (newStage === 'early_exit') {
-	  setPendingEarlyExit(true)
-	  return
-	}
+    if (newStage === 'early_exit') {
+      setPendingEarlyExit(true)
+      return
+    }
 
-    // Show deal value modal for proposal_sent and beyond
     if (DEAL_VALUE_STAGES.has(newStage)) {
       setPendingStage(newStage)
       return
     }
 
-    // Otherwise update directly
     setStageLoading(true)
     setStage(newStage)
     try {
@@ -66,21 +66,22 @@ export default function LeadActions({ lead, inputCurrency = 'PKR' }: LeadActions
     router.refresh()
   }
 
+  function handleModalSaved() {
+    router.refresh()
+  }
+
   function handleDelete() {
     startTransition(async () => {
       await deleteLead(lead.id)
+      router.push('/leads')
     })
-  }
-
-  function handleModalSaved() {
-    router.refresh()
   }
 
   return (
     <>
       {/* Stage selector */}
       <div className={styles.stageSection}>
-        <div className={styles.stageLabel}>Pipeline Stage</div>
+        <label className={styles.stageLabel}>Stage</label>
         <select
           className={styles.stageSelect}
           value={stage}
@@ -91,7 +92,6 @@ export default function LeadActions({ lead, inputCurrency = 'PKR' }: LeadActions
             <option key={s} value={s}>{STAGE_LABELS[s]}</option>
           ))}
         </select>
-        {stageLoading && <span className={styles.stageSpinner}>Saving…</span>}
       </div>
 
       {/* Action buttons */}
@@ -124,6 +124,13 @@ export default function LeadActions({ lead, inputCurrency = 'PKR' }: LeadActions
           Log Call
         </Button>
 
+        <Button size="sm" variant="outline" className={styles.fullWidth} onClick={() => setModal('visit')}>
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+            <path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z"/><circle cx="12" cy="10" r="3"/>
+          </svg>
+          Log Site Visit
+        </Button>
+
         <a href={`/contracts/new?lead=${lead.id}`} className={styles.contractBtn}>
           <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
             <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
@@ -133,6 +140,7 @@ export default function LeadActions({ lead, inputCurrency = 'PKR' }: LeadActions
           </svg>
           Generate Contract
         </a>
+
         <a href={`/quotations/new?lead=${lead.id}`} className={styles.contractBtn}>
           <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
             <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
@@ -146,53 +154,23 @@ export default function LeadActions({ lead, inputCurrency = 'PKR' }: LeadActions
       </div>
 
       {/* Delete */}
-      {!showDeleteConfirm ? (
-        <button className={styles.deleteLink} onClick={() => setShowDeleteConfirm(true)}>
-          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
-            <path d="M3 6h18M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3-3h6a1 1 0 0 1 1 1v1H6V3a1 1 0 0 1 1-1z"/>
-          </svg>
-          Delete Lead
-        </button>
-      ) : (
-        <div className={styles.deleteConfirm}>
-          <div className={styles.deleteConfirmText}>Delete this lead and all its history?</div>
-          <div style={{ display: 'flex', gap: '6px' }}>
-            <Button size="sm" variant="ghost" onClick={() => setShowDeleteConfirm(false)}>Cancel</Button>
-            <Button size="sm" variant="danger" onClick={handleDelete} disabled={isPending}>
-              {isPending ? 'Deleting…' : 'Yes, delete'}
-            </Button>
+      <div className={styles.deleteSection}>
+        {!showDeleteConfirm ? (
+          <button className={styles.deleteBtn} onClick={() => setShowDeleteConfirm(true)}>
+            Delete Lead
+          </button>
+        ) : (
+          <div className={styles.deleteConfirm}>
+            <span className={styles.deleteConfirmText}>Permanently delete this lead and all history?</span>
+            <div className={styles.deleteConfirmBtns}>
+              <button className={styles.deleteCancelBtn} onClick={() => setShowDeleteConfirm(false)}>Cancel</button>
+              <button className={styles.deleteConfirmBtn} onClick={handleDelete} disabled={isPending}>
+                {isPending ? 'Deleting…' : 'Yes, delete'}
+              </button>
+            </div>
           </div>
-        </div>
-      )}
-
-      {/* Deal value display */}
-      {(lead.quoted_setup_fee || lead.quoted_mrr) && (
-        <div className={styles.dealValues}>
-          <div className={styles.dealLabel}>Quoted Deal Value</div>
-          {lead.quoted_setup_fee && (
-            <div className={styles.dealRow}>
-              <span>Setup fee</span>
-              <span className={styles.dealAmount}>
-                {lead.deal_currency ?? inputCurrency} {lead.quoted_setup_fee.toLocaleString()}
-              </span>
-            </div>
-          )}
-          {lead.quoted_mrr && (
-            <div className={styles.dealRow}>
-              <span>Recurring ({lead.payment_frequency ?? 'monthly'})</span>
-              <span className={styles.dealAmount}>
-                {lead.deal_currency ?? inputCurrency} {lead.quoted_mrr.toLocaleString()}
-              </span>
-            </div>
-          )}
-          {lead.payment_frequency === 'annual' && lead.quoted_mrr && (
-            <div className={styles.dealRow} style={{ color: 'var(--color-text-3)', fontSize: 11 }}>
-              <span>MRR equivalent</span>
-              <span>{lead.deal_currency ?? inputCurrency} {(lead.quoted_mrr / 12).toFixed(0)}/mo</span>
-            </div>
-          )}
-        </div>
-      )}
+        )}
+      </div>
 
       {/* Modals */}
       {modal === 'email' && lead.email && (
@@ -220,6 +198,14 @@ export default function LeadActions({ lead, inputCurrency = 'PKR' }: LeadActions
           onSaved={handleModalSaved}
         />
       )}
+      {modal === 'visit' && (
+        <SiteVisitModal
+          leadId={lead.id}
+          leadName={lead.contact_name}
+          onClose={() => setModal(null)}
+          onSaved={handleModalSaved}
+        />
+      )}
       {pendingStage && (
         <DealValueModal
           leadId={lead.id}
@@ -232,14 +218,14 @@ export default function LeadActions({ lead, inputCurrency = 'PKR' }: LeadActions
           onSaved={handleDealSaved}
         />
       )}
-	  {pendingEarlyExit && (
-		  <EarlyExitModal
-			leadId={lead.id}
-			leadName={lead.contact_name}
-			onClose={() => setPendingEarlyExit(false)}
-			onSaved={() => { setStage('early_exit'); router.refresh() }}
-		  />
-		)}
+      {pendingEarlyExit && (
+        <EarlyExitModal
+          leadId={lead.id}
+          leadName={lead.contact_name}
+          onClose={() => setPendingEarlyExit(false)}
+          onSaved={() => { setStage('early_exit'); router.refresh() }}
+        />
+      )}
     </>
   )
 }

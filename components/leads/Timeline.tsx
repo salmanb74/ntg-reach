@@ -15,8 +15,9 @@ interface Activity {
 }
 
 const ACTIVITY_ICONS: Record<string, string> = {
-  email: '✉', whatsapp: '💬', meeting: '📅', call: '📞', note: '📝', stage: '🔄'
+  email: '✉', whatsapp: '💬', meeting: '📅', call: '📞', note: '📝', stage: '🔄', site_visit: '📍'
 }
+
 
 const ACTIVITY_LABELS: Record<string, string> = {
   email_outbound: 'Email sent',
@@ -26,6 +27,7 @@ const ACTIVITY_LABELS: Record<string, string> = {
   meeting:        'Meeting',
   note:           'Note',
   stage_change:   'Stage changed',
+  site_visit: 'Site visit',
 }
 
 function getTypeKey(type: string) {
@@ -34,6 +36,7 @@ function getTypeKey(type: string) {
   if (type.includes('meeting'))  return 'meeting'
   if (type.includes('call'))     return 'call'
   if (type.includes('stage'))    return 'stage'
+  if (type.includes('visit')) return 'site_visit'
   return 'note'
 }
 
