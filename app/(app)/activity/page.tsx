@@ -60,7 +60,7 @@ export default async function ActivityPage({
             <RepSelector users={repUsers} selectedId={selectedRepId} basePath="/activity" />
           </div>
         )}
-        <ActivityFeed activities={activities ?? []} />
+        <ActivityFeed activities={(activities ?? []) as any[]} />
       </div>
     </>
   )
