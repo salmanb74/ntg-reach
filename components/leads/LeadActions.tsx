@@ -12,13 +12,14 @@ import Button from '@/components/ui/Button'
 import { updateLead, deleteLead } from '@/lib/actions/leads'
 import { PIPELINE_STAGES, STAGE_LABELS, type Lead, type PipelineStage } from '@/lib/types'
 import styles from './LeadActions.module.css'
+import EmailLogModal from '@/components/modals/EmailLogModal'
 
 // Stages that require deal value capture
 const DEAL_VALUE_STAGES = new Set<PipelineStage>([
   'proposal_sent', 'negotiation', 'closed_won', 'closed_lost'
 ])
 
-type ModalType = 'email' | 'whatsapp' | 'call' | 'visit' | null
+type ModalType = 'email' | 'email_log' | 'whatsapp' | 'call' | 'visit' | null
 
 interface LeadActionsProps {
   lead:          Lead
@@ -110,6 +111,14 @@ export default function LeadActions({ lead, inputCurrency = 'PKR' }: LeadActions
           Send Email
         </Button>
 
+		<Button size="sm" variant="outline" className={styles.fullWidth} onClick={() => setModal('email_log')}>
+		  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+			<rect width="20" height="16" x="2" y="4" rx="2"/>
+			<path d="m22 7-8.97 5.7a1.94 1.94 0 0 1-2.06 0L2 7"/>
+		  </svg>
+		  Log Email
+		</Button>
+
         <Button size="sm" variant="outline" className={styles.fullWidth} onClick={() => setModal('whatsapp')}>
           <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
             <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
@@ -182,6 +191,16 @@ export default function LeadActions({ lead, inputCurrency = 'PKR' }: LeadActions
           onSent={handleModalSaved}
         />
       )}
+
+	{modal === 'email_log' && (
+	  <EmailLogModal
+		leadId={lead.id}
+		leadName={lead.contact_name}
+		onClose={() => setModal(null)}
+		onSaved={handleModalSaved}
+	  />
+	)}
+
       {modal === 'whatsapp' && (
         <WhatsAppModal
           leadId={lead.id}

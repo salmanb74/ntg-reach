@@ -118,3 +118,30 @@
   border-top: 1px solid var(--color-border);
   margin-top: 4px;
 }
+
+/* Append to components/modals/modals.module.css */
+
+.toggleRow {
+  display: flex;
+  gap: 6px;
+}
+
+.toggleBtn {
+  flex: 1;
+  padding: 7px 12px;
+  border: 1px solid var(--color-border-medium);
+  border-radius: var(--radius-md);
+  background: var(--color-surface);
+  color: var(--color-text-2);
+  font-size: 13px;
+  font-family: var(--font-sans);
+  cursor: pointer;
+  transition: all 0.15s;
+  font-weight: 500;
+}
+.toggleBtn:hover { background: var(--color-surface-2); }
+.toggleActive {
+  background: var(--color-primary-subtle);
+  color: var(--color-primary);
+  border-color: var(--color-primary-border);
+}

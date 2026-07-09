@@ -22,9 +22,10 @@ export default async function ReportsPage({
     settingsMap,
     ratesList,
   ] = await Promise.all([
-    canSeeAll
-      ? supabase.from('profiles').select('id, full_name, email, roles').order('full_name')
-      : supabase.from('profiles').select('id, full_name, email, roles').eq('id', profile!.id),
+
+	canSeeAll
+	  ? supabase.from('profiles').select('id, full_name, email, roles').not('roles', 'eq', '{}').order('full_name').order('full_name')
+	  : supabase.from('profiles').select('id, full_name, email, roles').eq('id', profile!.id),  
     getAppSettings(),
     getCurrentRates(),
   ])

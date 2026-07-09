@@ -9,19 +9,25 @@ interface User {
   email: string
 }
 
-export default function RepSelector({ users, selectedId }: { users: User[]; selectedId: string }) {
+interface Props {
+  users:      User[]
+  selectedId: string
+  basePath?:  string  // defaults to /reports
+}
+
+export default function RepSelector({ users, selectedId, basePath = '/reports' }: Props) {
   const router = useRouter()
   const searchParams = useSearchParams()
 
   function handleChange(e: React.ChangeEvent<HTMLSelectElement>) {
     const params = new URLSearchParams(searchParams.toString())
     params.set('rep', e.target.value)
-    router.push(`/reports?${params.toString()}`)
+    router.push(`${basePath}?${params.toString()}`)
   }
 
   return (
     <div className={styles.wrap}>
-      <label className={styles.label}>Viewing report for:</label>
+      <label className={styles.label}>Viewing:</label>
       <select className={styles.select} value={selectedId} onChange={handleChange}>
         {users.map(u => (
           <option key={u.id} value={u.id}>
