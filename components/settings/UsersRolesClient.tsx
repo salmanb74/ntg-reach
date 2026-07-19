@@ -6,12 +6,26 @@ import styles from './UsersRoles.module.css'
 
 type UserRole = 'admin' | 'manager' | 'sales_rep'
 
-const ALL_ROLES: UserRole[] = ['admin', 'manager', 'sales_rep']
+export const ALL_ROLES = [
+  { value: 'crm_admin',      label: 'CRM Admin',     group: 'CRM' },
+  { value: 'crm_manager',    label: 'CRM Manager',   group: 'CRM' },
+  { value: 'crm_sales_rep',  label: 'Sales Rep',     group: 'CRM' },
+  { value: 'cs_admin',       label: 'CS Admin',      group: 'Support' },
+  { value: 'cs_manager',     label: 'CS Manager',    group: 'Support' },
+  { value: 'cs_support_rep', label: 'Support Rep',   group: 'Support' },
+  { value: 'admin_resto',    label: 'Resto Admin',   group: 'Admin' },
+  { value: 'admin_alma',     label: 'Alma Admin',    group: 'Admin' },
+]
 
-const ROLE_LABELS: Record<UserRole, string> = {
-  admin:     'Admin',
-  manager:   'Manager',
-  sales_rep: 'Sales Rep',
+export const ROLE_LABELS: Record<string, string> = {
+  crm_admin:      'CRM Admin',
+  crm_manager:    'CRM Manager',
+  crm_sales_rep:  'Sales Rep',
+  cs_admin:       'CS Admin',
+  cs_manager:     'CS Manager',
+  cs_support_rep: 'Support Rep',
+  admin_resto:    'Resto Admin',
+  admin_alma:     'Alma Admin',
 }
 
 interface User {

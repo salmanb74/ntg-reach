@@ -1,13 +1,6 @@
 import { cache } from 'react'
 import { createClient } from '@/lib/supabase/server'
-import type { UserRole } from '@/lib/roles'
-
-export interface CachedProfile {
-  id:        string
-  full_name: string | null
-  email:     string
-  roles:     UserRole[]
-}
+import type { UserRole, Product, UserProfile } from '@/lib/roles'
 
 // ── Auth — cached once per request ────────────────────────────
 export const getUser = cache(async () => {
@@ -17,16 +10,23 @@ export const getUser = cache(async () => {
 })
 
 // ── Profile — cached once per request ─────────────────────────
-export const getCachedProfile = cache(async (): Promise<CachedProfile | null> => {
+export const getCachedProfile = cache(async (): Promise<UserProfile | null> => {
   const user = await getUser()
   if (!user) return null
   const supabase = createClient()
   const { data } = await supabase
     .from('profiles')
-    .select('id, full_name, email, roles')
+    .select('id, full_name, email, roles, products')
     .eq('id', user.id)
     .single()
-  return data as CachedProfile | null
+  if (!data) return null
+  return {
+    id:        data.id,
+    full_name: data.full_name,
+    email:     data.email,
+    roles:     (data.roles    ?? []) as UserRole[],
+    products:  (data.products ?? []) as Product[],
+  }
 })
 
 // ── App settings — cached once per request ─────────────────────

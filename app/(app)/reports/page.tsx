@@ -1,5 +1,5 @@
 import { createClient } from '@/lib/supabase/server'
-import { isManager } from '@/lib/roles'
+import { isCrmManager } from '@/lib/roles'
 import Topbar from '@/components/layout/Topbar'
 import RepSelector from '@/components/reports/RepSelector'
 import PerformanceReport from '@/components/reports/PerformanceReport'
@@ -14,7 +14,7 @@ export default async function ReportsPage({
 }) {
   const supabase  = createClient()
   const profile   = await getCachedProfile()
-  const canSeeAll = isManager(profile)
+  const canSeeAll = isCrmManager(profile)
 
   // ── Parallel fetch — profile/settings/rates from cache ────────
   const [

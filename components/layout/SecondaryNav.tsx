@@ -6,9 +6,10 @@ import { useEffect, useState } from 'react'
 import styles from './SecondaryNav.module.css'
 
 export interface SecondaryNavItem {
-  href:  string
-  label: string
-  icon:  string
+  href:     string
+  label:    string
+  icon?:    string
+  svgPath?: string
 }
 
 interface Props {
@@ -64,7 +65,10 @@ export default function SecondaryNav({ title, items }: Props) {
 
       <ul className={styles.list} role="list">
         {items.map(item => {
-          const isActive = pathname === item.href
+          const isActive = pathname === item.href ||
+            (item.href !== '/support/chats' &&
+             item.href !== '/support/dashboard' &&
+             pathname.startsWith(item.href))
           return (
             <li key={item.href}>
               <Link
@@ -72,7 +76,23 @@ export default function SecondaryNav({ title, items }: Props) {
                 className={`${styles.item} ${isActive ? styles.active : ''}`}
                 title={collapsed ? item.label : undefined}
               >
-                <span className={styles.icon}>{item.icon}</span>
+                {item.svgPath ? (
+                  <svg
+                    className={styles.svgIcon}
+                    width="16" height="16"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="1.75"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    aria-hidden="true"
+                  >
+                    <path d={item.svgPath} />
+                  </svg>
+                ) : (
+                  <span className={styles.icon}>{item.icon}</span>
+                )}
                 {!collapsed && <span className={styles.label}>{item.label}</span>}
               </Link>
             </li>

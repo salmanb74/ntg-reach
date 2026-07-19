@@ -23,6 +23,21 @@
   gap: 8px;
 }
 
+.clockWrap {
+  position: relative;
+  width: 10px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.topbarClockDot {
+  position: relative;
+  /* override absolute from ClockedInDot when in topbar */
+  inset: auto;
+}
+
 .avatar {
   width: 30px;
   height: 30px;

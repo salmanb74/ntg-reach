@@ -1,0 +1,58 @@
+.bubbleText {
+  margin: 0;
+  font-size: 13px;
+  line-height: 1.45;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+.audioPlayer {
+  display: block;
+  width: 100%;
+  min-width: 180px;
+  max-width: 260px;
+  height: 36px;
+}
+
+.imageBtn {
+  display: block;
+  padding: 0;
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  line-height: 0;
+}
+
+.messageImage {
+  display: block;
+  max-width: 240px;
+  max-height: 280px;
+  width: auto;
+  height: auto;
+  border-radius: var(--radius-md);
+  cursor: pointer;
+  object-fit: cover;
+}
+
+.imageLightbox {
+  position: fixed;
+  inset: 0;
+  z-index: 1000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+  background: rgba(0, 0, 0, 0.72);
+  cursor: pointer;
+}
+
+.lightboxImage {
+  max-width: min(920px, 96vw);
+  max-height: 90vh;
+  width: auto;
+  height: auto;
+  border-radius: var(--radius-md);
+  object-fit: contain;
+  cursor: default;
+  box-shadow: var(--shadow-lg);
+}

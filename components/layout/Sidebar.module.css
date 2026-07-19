@@ -45,6 +45,7 @@
 }
 
 .navItem {
+  position: relative;
   width: 36px;
   height: 36px;
   border-radius: var(--radius-md);
@@ -63,6 +64,29 @@
 .navItem.active {
   background: var(--sidebar-active-bg);
   color: var(--sidebar-icon-active);
+}
+
+.clockDot {
+  position: absolute;
+  top: 5px;
+  right: 5px;
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--color-success);
+  border: 1.5px solid var(--sidebar-bg);
+  box-sizing: border-box;
+  animation: clockPulse 1.2s ease-in-out infinite;
+}
+
+@keyframes clockPulse {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.4;
+  }
 }
 
 .bottomSection {

@@ -8,6 +8,7 @@ import styles from './NotificationBell.module.css'
 
 export default function NotificationBell() {
   const [count, setCount] = useState(0)
+  const [onDuty, setOnDuty] = useState(false)
   const pathname = usePathname()
 
   async function fetchDueCount() {
@@ -20,19 +21,57 @@ export default function NotificationBell() {
     setCount(dueCount ?? 0)
   }
 
-  // Re-fetch when route changes (catches router.refresh() after dismiss/delete)
+  async function fetchOnDuty() {
+    const supabase = createClient()
+    const { data: { user } } = await supabase.auth.getUser()
+    if (!user) {
+      setOnDuty(false)
+      return
+    }
+
+    const { data: profile } = await supabase
+      .from('profiles')
+      .select('roles')
+      .eq('id', user.id)
+      .maybeSingle()
+
+    const roles = (profile?.roles as string[] | null) ?? []
+    if (!roles.some(r => r.startsWith('cs_'))) {
+      setOnDuty(false)
+      return
+    }
+
+    const now = new Date().toISOString()
+    const { data } = await supabase
+      .from('support_shifts')
+      .select('id')
+      .eq('agent_id', user.id)
+      .lte('start_at', now)
+      .gte('end_at', now)
+      .limit(1)
+
+    setOnDuty((data?.length ?? 0) > 0)
+  }
+
   useEffect(() => {
     fetchDueCount()
+    fetchOnDuty()
   }, [pathname])
 
-  // Also poll every 60s for new reminders becoming due
   useEffect(() => {
-    const interval = setInterval(fetchDueCount, 60_000)
+    const interval = setInterval(() => {
+      fetchDueCount()
+      fetchOnDuty()
+    }, 60_000)
     return () => clearInterval(interval)
   }, [])
 
   return (
-    <Link href="/notifications" className={styles.bell} title="Notifications">
+    <Link
+      href="/notifications"
+      className={styles.bell}
+      title={onDuty ? 'On duty · Notifications' : 'Notifications'}
+    >
       <svg
         width="18" height="18"
         viewBox="0 0 24 24"
@@ -45,6 +84,9 @@ export default function NotificationBell() {
         <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/>
         <path d="M13.73 21a2 2 0 0 1-3.46 0"/>
       </svg>
+      {onDuty && (
+        <span className={styles.onDutyDot} aria-label="On duty" title="On duty" />
+      )}
       {count > 0 && (
         <span className={styles.badge}>{count > 9 ? '9+' : count}</span>
       )}

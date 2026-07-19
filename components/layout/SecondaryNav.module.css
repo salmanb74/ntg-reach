@@ -95,6 +95,12 @@
   text-align: center;
 }
 
+.svgIcon {
+  flex-shrink: 0;
+  width: 16px;
+  height: 16px;
+}
+
 .label {
   overflow: hidden;
   text-overflow: ellipsis;

@@ -7,10 +7,15 @@ import styles from './ProfileClient.module.css'
 
 type UserRole = 'admin' | 'manager' | 'sales_rep'
 
-const ROLE_LABELS: Record<UserRole, string> = {
-  admin:     'Admin',
-  manager:   'Manager',
-  sales_rep: 'Sales Rep',
+export const ROLE_LABELS: Record<string, string> = {
+  crm_admin:      'CRM Admin',
+  crm_manager:    'CRM Manager',
+  crm_sales_rep:  'Sales Rep',
+  cs_admin:       'CS Admin',
+  cs_manager:     'CS Manager',
+  cs_support_rep: 'Support Rep',
+  admin_resto:    'Resto Admin',
+  admin_alma:     'Alma Admin',
 }
 
 interface Profile {

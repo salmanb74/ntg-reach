@@ -1,0 +1,49 @@
+.body {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.meta {
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.meta dt {
+  font-size: 11px;
+  font-weight: 500;
+  color: var(--color-text-3);
+  margin: 0 0 2px;
+}
+
+.meta dd {
+  margin: 0;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--color-text);
+}
+
+.transferBox {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 12px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  background: var(--color-surface-2);
+}
+
+.transferActions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  margin-top: 4px;
+}
+
+.error {
+  margin: 0;
+  font-size: 12px;
+  color: var(--color-error);
+}

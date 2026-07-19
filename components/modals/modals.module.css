@@ -145,3 +145,23 @@
   color: var(--color-primary);
   border-color: var(--color-primary-border);
 }
+
+.confirmBody {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.confirmMessage {
+  margin: 0;
+  font-size: 14px;
+  line-height: 1.55;
+  color: var(--color-text-2);
+}
+
+.footerSimple {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+}
+

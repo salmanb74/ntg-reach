@@ -1,6 +1,6 @@
 import { createClient } from '@/lib/supabase/server'
 import { getCachedProfile } from '@/lib/dataCache'
-import { isManager } from '@/lib/roles'
+import { isCrmManager } from '@/lib/roles'
 import Topbar from '@/components/layout/Topbar'
 import ActivityFeed from '@/components/activity/ActivityFeed'
 import RepSelector from '@/components/reports/RepSelector'
@@ -13,7 +13,7 @@ export default async function ActivityPage({
 }) {
   const supabase  = createClient()
   const profile   = await getCachedProfile()
-  const canSeeAll = isManager(profile)
+  const canSeeAll = isCrmManager(profile)
 
   const usersResult = canSeeAll
     ? await supabase.from('profiles').select('id, full_name, email, roles').not('roles', 'eq', '{}').order('full_name')
