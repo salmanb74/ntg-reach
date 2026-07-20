@@ -17,8 +17,6 @@ import MessageBody from './MessageBody'
 import VoiceRecorder from './VoiceRecorder'
 import type { ChatMessage, ConversationItem } from './types'
 import {
-  TEST_TENANT_ID,
-  TEST_TENANT_NAME,
   formatLastMessageAgo,
   sortConversationsByActivity,
 } from './types'
@@ -28,11 +26,17 @@ import styles from './SimulatorClient.module.css'
 interface Props {
   initialConversations: ConversationItem[]
   currentUserId:        string
+  tenantId:             string
+  tenantName:           string
+  customerDisplayName:  string
 }
 
 export default function SimulatorClient({
   initialConversations,
   currentUserId,
+  tenantId,
+  tenantName,
+  customerDisplayName,
 }: Props) {
   const [conversations, setConversations] = useState(initialConversations)
   const [selectedId, setSelectedId] = useState<string | null>(
@@ -95,7 +99,7 @@ export default function SimulatorClient({
             event:  'UPDATE',
             schema: 'public',
             table:  'support_conversations',
-            filter: `tenant_id=eq.${TEST_TENANT_ID}`,
+            filter: `tenant_id=eq.${tenantId}`,
           },
           (payload) => {
             const row = payload.new as ConversationItem
@@ -122,7 +126,7 @@ export default function SimulatorClient({
             event:  'INSERT',
             schema: 'public',
             table:  'support_conversations',
-            filter: `tenant_id=eq.${TEST_TENANT_ID}`,
+            filter: `tenant_id=eq.${tenantId}`,
           },
           (payload) => {
             const row = payload.new as ConversationItem
@@ -155,7 +159,7 @@ export default function SimulatorClient({
       cancelled = true
       if (channel) supabase.removeChannel(channel)
     }
-  }, [])
+  }, [tenantId])
 
   useEffect(() => {
     if (!selectedId) {
@@ -169,7 +173,7 @@ export default function SimulatorClient({
     const conversationId = selectedId
 
     async function resolveSenderName(senderId: string, senderType: string) {
-      if (senderType === 'customer') return 'Clay Handi'
+      if (senderType === 'customer') return customerDisplayName
       if (nameCache.current[senderId]) return nameCache.current[senderId]
       const { data: profile } = await supabase
         .from('profiles')
@@ -252,7 +256,7 @@ export default function SimulatorClient({
           sender_type:     r.sender_type,
           sender_name:
             r.sender_type === 'customer'
-              ? 'Clay Handi'
+              ? customerDisplayName
               : (nameCache.current[r.sender_id] ?? 'NTG Support'),
           message_type:    r.message_type,
           content:         r.content,
@@ -293,7 +297,7 @@ export default function SimulatorClient({
         channelRef.current = null
       }
     }
-  }, [selectedId])
+  }, [selectedId, customerDisplayName])
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: 'smooth' })
@@ -327,8 +331,8 @@ export default function SimulatorClient({
     const { data, error: insertError } = await supabase
       .from('support_conversations')
       .insert({
-        tenant_id:   TEST_TENANT_ID,
-        tenant_name: TEST_TENANT_NAME,
+        tenant_id:   tenantId,
+        tenant_name: tenantName,
         status:      'open',
         created_by:  currentUserId,
         title:       null,
@@ -403,7 +407,7 @@ export default function SimulatorClient({
           conversation_id: row.conversation_id,
           sender_id:       row.sender_id,
           sender_type:     row.sender_type,
-          sender_name:     'Clay Handi',
+          sender_name:     customerDisplayName,
           message_type:    row.message_type,
           content:         row.content,
           file_url:        row.file_url,
@@ -466,7 +470,7 @@ export default function SimulatorClient({
   return (
     <div className={styles.shell}>
       <div className={styles.banner}>
-        <strong>Resto Simulator — Clay Handi</strong>
+        <strong>Resto Simulator — {tenantName}</strong>
         <span>Simulating customer view — temporary test tool</span>
       </div>
 
@@ -483,7 +487,7 @@ export default function SimulatorClient({
         <aside className={`${styles.listPanel} ${listOpen ? styles.listOpen : ''}`}>
           <div className={styles.listHeader}>
             <div>
-              <h2 className={styles.listTitle}>Clay Handi</h2>
+              <h2 className={styles.listTitle}>{tenantName}</h2>
               <p className={styles.listSub}>Customer chats</p>
             </div>
             <div className={styles.listHeaderActions}>
@@ -639,7 +643,7 @@ export default function SimulatorClient({
                   disabled={selected.status === 'closed' || voiceActive}
                   onActiveChange={setImageActive}
                   onError={setError}
-                  onSent={(row) => appendLocalMessage(row, 'Clay Handi')}
+                  onSent={(row) => appendLocalMessage(row, customerDisplayName)}
                 />
                 <VoiceRecorder
                   conversationId={selected.id}
@@ -648,7 +652,7 @@ export default function SimulatorClient({
                   disabled={selected.status === 'closed' || imageActive}
                   onActiveChange={setVoiceActive}
                   onError={setError}
-                  onSent={(row) => appendLocalMessage(row, 'Clay Handi')}
+                  onSent={(row) => appendLocalMessage(row, customerDisplayName)}
                 />
                 <input
                   className={styles.input}

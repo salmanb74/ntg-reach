@@ -1,15 +1,21 @@
 'use client'
 
 import Link from 'next/link'
+import { useEffect, useState } from 'react'
 import { usePathname } from 'next/navigation'
 import type { UserRole, Module } from '@/lib/roles'
 import { useClockedIn } from '@/components/layout/ClockedInDot'
+import {
+  getSupportUnreadMessageTotal,
+  subscribeSupportUnread,
+} from '@/lib/support/unreadStore'
 import styles from './Sidebar.module.css'
 
 interface NavItem {
   href:         string
   label:        string
-  svgPath:      string
+  svgPath?:     string
+  navMonogram?: string
   adminOnly?:   boolean
   csAdminOnly?: boolean
   modules:      Module[]  // which modules show this item
@@ -86,8 +92,14 @@ const NAV_ITEMS: NavItem[] = [
     modules: ['cs_resto', 'cs_alma'],
   },
   {
-    href: '/support/simulator', label: 'Simulator',
-    svgPath: 'M9 3h6 M10 3v6.5L6.2 17a2 2 0 0 0 1.7 3h8.2a2 2 0 0 0 1.7-3L14 9.5V3 M8.5 14h7',
+    href: '/support/simulator/clay-handi', label: 'Clay Handi (simulator)',
+    navMonogram: 'CH',
+    csAdminOnly: true,
+    modules: ['cs_resto', 'cs_alma'],
+  },
+  {
+    href: '/support/simulator/abbott-pizza', label: 'Abbott Pizza (simulator)',
+    navMonogram: 'AB',
     csAdminOnly: true,
     modules: ['cs_resto', 'cs_alma'],
   },
@@ -104,6 +116,13 @@ export default function Sidebar({ roles = [], activeModule }: Props) {
   const isCsAdmin  = roles.includes('cs_admin')
   const isAnyAdmin = isCrmAdmin || isCsAdmin
   const clockedIn  = useClockedIn()
+  const [supportUnread, setSupportUnread] = useState(0)
+
+  useEffect(() => {
+    return subscribeSupportUnread(snap =>
+      setSupportUnread(getSupportUnreadMessageTotal(snap))
+    )
+  }, [])
 
   const visibleItems = NAV_ITEMS.filter(item => {
     if (!item.modules.includes(activeModule)) return false
@@ -123,32 +142,53 @@ export default function Sidebar({ roles = [], activeModule }: Props) {
              item.href !== '/support/dashboard' &&
              pathname.startsWith(item.href))
           const showClockDot = clockedIn && item.href === '/support/time'
+          const showChatBadge =
+            supportUnread > 0 && item.href === '/support/chats'
           return (
             <li key={item.href}>
               <Link
                 href={item.href}
                 className={`${styles.navItem} ${isActive ? styles.active : ''}`}
                 title={
-                  showClockDot ? `${item.label} · Clocked in` : item.label
+                  showClockDot
+                    ? `${item.label} · Clocked in`
+                    : showChatBadge
+                      ? `${item.label} · ${supportUnread} unread`
+                      : item.label
                 }
                 aria-label={
-                  showClockDot ? `${item.label}, clocked in` : item.label
+                  showClockDot
+                    ? `${item.label}, clocked in`
+                    : showChatBadge
+                      ? `${item.label}, ${supportUnread} unread`
+                      : item.label
                 }
               >
-                <svg
-                  width="20" height="20"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="currentColor"
-                  strokeWidth="1.75"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  aria-hidden="true"
-                >
-                  <path d={item.svgPath} />
-                </svg>
+                {item.navMonogram ? (
+                  <span className={styles.navMonogram} aria-hidden="true">
+                    {item.navMonogram}
+                  </span>
+                ) : (
+                  <svg
+                    width="20" height="20"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="1.75"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    aria-hidden="true"
+                  >
+                    <path d={item.svgPath!} />
+                  </svg>
+                )}
                 {showClockDot && (
                   <span className={styles.clockDot} aria-hidden="true" />
+                )}
+                {showChatBadge && (
+                  <span className={styles.chatBadge}>
+                    {supportUnread > 9 ? '9+' : supportUnread}
+                  </span>
                 )}
               </Link>
             </li>

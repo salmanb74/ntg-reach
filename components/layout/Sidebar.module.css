@@ -66,6 +66,14 @@
   color: var(--sidebar-icon-active);
 }
 
+.navMonogram {
+  font-size: 9px;
+  font-weight: 800;
+  letter-spacing: -0.3px;
+  line-height: 1;
+  user-select: none;
+}
+
 .clockDot {
   position: absolute;
   top: 5px;
@@ -77,6 +85,26 @@
   border: 1.5px solid var(--sidebar-bg);
   box-sizing: border-box;
   animation: clockPulse 1.2s ease-in-out infinite;
+}
+
+.chatBadge {
+  position: absolute;
+  top: 2px;
+  right: 2px;
+  min-width: 14px;
+  height: 14px;
+  padding: 0 3px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: var(--radius-full);
+  background: var(--color-primary);
+  color: var(--color-text-inverse);
+  font-size: 8px;
+  font-weight: 700;
+  line-height: 1;
+  border: 1.5px solid var(--sidebar-bg);
+  box-sizing: border-box;
 }
 
 @keyframes clockPulse {

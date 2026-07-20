@@ -4,10 +4,15 @@ import { useState, useEffect } from 'react'
 import { usePathname } from 'next/navigation'
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase/client'
+import {
+  getSupportUnreadMessageTotal,
+  subscribeSupportUnread,
+} from '@/lib/support/unreadStore'
 import styles from './NotificationBell.module.css'
 
 export default function NotificationBell() {
-  const [count, setCount] = useState(0)
+  const [reminderCount, setReminderCount] = useState(0)
+  const [supportUnread, setSupportUnread] = useState(0)
   const [onDuty, setOnDuty] = useState(false)
   const pathname = usePathname()
 
@@ -18,7 +23,7 @@ export default function NotificationBell() {
       .select('*', { count: 'exact', head: true })
       .lte('remind_at', new Date().toISOString())
       .is('dismissed_at', null)
-    setCount(dueCount ?? 0)
+    setReminderCount(dueCount ?? 0)
   }
 
   async function fetchOnDuty() {
@@ -54,6 +59,12 @@ export default function NotificationBell() {
   }
 
   useEffect(() => {
+    return subscribeSupportUnread(snap =>
+      setSupportUnread(getSupportUnreadMessageTotal(snap))
+    )
+  }, [])
+
+  useEffect(() => {
     fetchDueCount()
     fetchOnDuty()
   }, [pathname])
@@ -66,11 +77,22 @@ export default function NotificationBell() {
     return () => clearInterval(interval)
   }, [])
 
+  const hideSupportBadge = pathname.startsWith('/support/simulator')
+  const visibleSupportUnread = hideSupportBadge ? 0 : supportUnread
+  const total = reminderCount + visibleSupportUnread
+  const titleParts = [
+    onDuty ? 'On duty' : null,
+    visibleSupportUnread > 0
+      ? `${visibleSupportUnread} new support message${visibleSupportUnread === 1 ? '' : 's'}`
+      : null,
+    reminderCount > 0 ? `${reminderCount} reminder${reminderCount === 1 ? '' : 's'}` : null,
+  ].filter(Boolean)
+
   return (
     <Link
-      href="/notifications"
+      href={visibleSupportUnread > 0 ? '/support/chats' : '/notifications'}
       className={styles.bell}
-      title={onDuty ? 'On duty · Notifications' : 'Notifications'}
+      title={titleParts.length ? titleParts.join(' · ') : 'Notifications'}
     >
       <svg
         width="18" height="18"
@@ -87,8 +109,8 @@ export default function NotificationBell() {
       {onDuty && (
         <span className={styles.onDutyDot} aria-label="On duty" title="On duty" />
       )}
-      {count > 0 && (
-        <span className={styles.badge}>{count > 9 ? '9+' : count}</span>
+      {total > 0 && (
+        <span className={styles.badge}>{total > 9 ? '9+' : total}</span>
       )}
     </Link>
   )
