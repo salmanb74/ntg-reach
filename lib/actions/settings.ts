@@ -74,7 +74,7 @@ export async function reorderEnumeration(id: string, direction: 'up' | 'down') {
 export async function updateUserRoles(userId: string, roles: UserRole[]) {
   const supabase = createClient()
   // Ensure at least one role always set
-  const finalRoles = roles.length === 0 ? ['sales_rep' as UserRole] : roles
+  const finalRoles = roles.length === 0 ? ['crm_sales_rep'] : roles
   const { error } = await supabase
     .from('profiles')
     .update({ roles: finalRoles })

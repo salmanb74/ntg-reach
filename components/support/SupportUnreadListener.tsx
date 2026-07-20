@@ -64,8 +64,8 @@ export default function SupportUnreadListener() {
     // Extra haptic feedback when supported.
     try {
       if (typeof navigator !== 'undefined' && 'vibrate' in navigator) {
-        // @ts-expect-error - vibrate isn't in all TS lib targets
-        navigator.vibrate?.(100)
+        const nav = navigator as Navigator & { vibrate?: (pattern: number) => void }
+        nav.vibrate?.(100)
       }
     } catch {
       // ignore
@@ -114,10 +114,10 @@ export default function SupportUnreadListener() {
 
             markSupportCustomerMessage(row.conversation_id)
 
-            // Loud beep when user is unlikely to be actively watching.
-            const onChatsPage = pathnameRef.current.startsWith('/support/chats')
-            const hidden = typeof document !== 'undefined' && document.hidden
-            if (hidden || !onChatsPage) playLoudSound()
+            // Loud beep only when this tab is in the background (not visible).
+            if (typeof document !== 'undefined' && document.hidden) {
+              playLoudSound()
+            }
 
             if (
               typeof document !== 'undefined' &&

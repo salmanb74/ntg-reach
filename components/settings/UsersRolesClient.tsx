@@ -2,9 +2,8 @@
 
 import { useState, useTransition } from 'react'
 import { updateUserRoles } from '@/lib/actions/settings'
+import type { UserRole } from '@/lib/roles'
 import styles from './UsersRoles.module.css'
-
-type UserRole = 'admin' | 'manager' | 'sales_rep'
 
 export const ALL_ROLES = [
   { value: 'crm_admin',      label: 'CRM Admin',     group: 'CRM' },
@@ -43,7 +42,7 @@ function initials(name: string | null, email: string) {
 export default function UsersRolesClient({ users }: { users: User[] }) {
   const [editing, setEditing] = useState<string | null>(null)
   const [roleMap, setRoleMap] = useState<Record<string, UserRole[]>>(
-    Object.fromEntries(users.map(u => [u.id, u.roles ?? ['sales_rep']]))
+    Object.fromEntries(users.map(u => [u.id, u.roles ?? ['crm_sales_rep']]))
   )
   const [isPending, startTransition] = useTransition()
   const [saved, setSaved] = useState<string | null>(null)
@@ -54,7 +53,7 @@ export default function UsersRolesClient({ users }: { users: User[] }) {
       const next = current.includes(role)
         ? current.filter(r => r !== role)
         : [...current, role]
-      return { ...prev, [userId]: next.length === 0 ? ['sales_rep'] : next }
+      return { ...prev, [userId]: next.length === 0 ? ['crm_sales_rep'] : next }
     })
   }
 
@@ -71,7 +70,7 @@ export default function UsersRolesClient({ users }: { users: User[] }) {
     <div className={styles.list}>
       {users.map(user => {
         const isEditing = editing === user.id
-        const roles = roleMap[user.id] ?? ['sales_rep']
+        const roles = roleMap[user.id] ?? ['crm_sales_rep']
 
         return (
           <div key={user.id} className={styles.userCard}>
@@ -101,14 +100,14 @@ export default function UsersRolesClient({ users }: { users: User[] }) {
               ) : (
                 <div className={styles.roleEditor}>
                   {ALL_ROLES.map(role => (
-                    <label key={role} className={styles.roleCheck}>
+                    <label key={role.value as string} className={styles.roleCheck}>
                       <input
                         type="checkbox"
-                        checked={roles.includes(role)}
-                        onChange={() => toggleRole(user.id, role)}
+                        checked={roles.includes(role.value as UserRole)}
+                        onChange={() => toggleRole(user.id, role.value as UserRole)}
                         className={styles.checkbox}
                       />
-                      {ROLE_LABELS[role]}
+                      {ROLE_LABELS[role.value]}
                     </label>
                   ))}
                   <div className={styles.editorBtns}>
