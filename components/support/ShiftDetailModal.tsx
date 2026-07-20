@@ -1,15 +1,21 @@
 'use client'
 
-import { useState, useTransition } from 'react'
+import { useMemo, useState, useTransition } from 'react'
 import { useRouter } from 'next/navigation'
 import Modal from '@/components/modals/Modal'
 import ConfirmModal from '@/components/modals/ConfirmModal'
 import Button from '@/components/ui/Button'
-import { deleteShift, updateShift } from '@/lib/actions/support-shifts'
+import {
+  deleteMatchingShifts,
+  deleteShift,
+  updateShift,
+} from '@/lib/actions/support-shifts'
 import {
   agentDisplayName,
+  findOverlappingShifts,
   formatShiftDate,
   formatShiftTime,
+  shiftTimePatternKey,
   type ShiftAgent,
   type ShiftItem,
 } from '@/lib/support/shifts'
@@ -19,13 +25,17 @@ import styles from './ShiftDetailModal.module.css'
 interface Props {
   shift:     ShiftItem
   agents:    ShiftAgent[]
+  allShifts: ShiftItem[]
   canManage: boolean
   onClose:   () => void
 }
 
+type MatchingScope = 'from_here' | 'all'
+
 export default function ShiftDetailModal({
   shift,
   agents,
+  allShifts,
   canManage,
   onClose,
 }: Props) {
@@ -35,8 +45,48 @@ export default function ShiftDetailModal({
   const [transferTo, setTransferTo] = useState(
     agents.find(a => a.id !== shift.agent_id)?.id ?? ''
   )
-  const [confirmDelete, setConfirmDelete] = useState(false)
+  const [confirmOne, setConfirmOne] = useState(false)
+  const [matchingOpen, setMatchingOpen] = useState(false)
+  const [matchingScope, setMatchingScope] = useState<MatchingScope>('from_here')
   const [error, setError] = useState<string | null>(null)
+
+  const overlaps = useMemo(
+    () => findOverlappingShifts(shift, allShifts),
+    [shift, allShifts]
+  )
+
+  const pattern = useMemo(
+    () => shiftTimePatternKey(shift.start_at, shift.end_at),
+    [shift.start_at, shift.end_at]
+  )
+
+  const originStartMs = useMemo(
+    () => new Date(shift.start_at).getTime(),
+    [shift.start_at]
+  )
+
+  const matchingAll = useMemo(() => {
+    if (shift.series_id) {
+      return allShifts.filter(s => s.series_id === shift.series_id)
+    }
+    return allShifts.filter(
+      s =>
+        s.agent_id === shift.agent_id &&
+        shiftTimePatternKey(s.start_at, s.end_at) === pattern
+    )
+  }, [shift, allShifts, pattern])
+
+  const matchingFromHere = useMemo(
+    () => matchingAll.filter(s => new Date(s.start_at).getTime() >= originStartMs),
+    [matchingAll, originStartMs]
+  )
+
+  const matchingCountAll = matchingAll.length
+  const matchingCountFromHere = matchingFromHere.length
+  const selectedCount =
+    matchingScope === 'from_here' ? matchingCountFromHere : matchingCountAll
+
+  const showMatchingButton = matchingCountAll > 1
 
   function handleTransfer() {
     if (!transferTo || transferTo === shift.agent_id) return
@@ -52,17 +102,31 @@ export default function ShiftDetailModal({
     })
   }
 
-  function handleDelete() {
+  function handleDeleteOne() {
     setError(null)
     startTransition(async () => {
       try {
         await deleteShift(shift.id)
         router.refresh()
-        setConfirmDelete(false)
+        setConfirmOne(false)
         onClose()
       } catch (err) {
         setError(err instanceof Error ? err.message : 'Delete failed')
-        setConfirmDelete(false)
+        setConfirmOne(false)
+      }
+    })
+  }
+
+  function handleDeleteMatching() {
+    setError(null)
+    startTransition(async () => {
+      try {
+        await deleteMatchingShifts(shift.id, matchingScope)
+        router.refresh()
+        setMatchingOpen(false)
+        onClose()
+      } catch (err) {
+        setError(err instanceof Error ? err.message : 'Delete failed')
       }
     })
   }
@@ -72,7 +136,7 @@ export default function ShiftDetailModal({
       <Modal
         title="Shift details"
         onClose={pending ? () => {} : onClose}
-        width={420}
+        width={440}
       >
         <div className={styles.body}>
           <dl className={styles.meta}>
@@ -90,7 +154,33 @@ export default function ShiftDetailModal({
                 {formatShiftTime(shift.start_at)} – {formatShiftTime(shift.end_at)}
               </dd>
             </div>
+            {shift.series_id && (
+              <div>
+                <dt>Series</dt>
+                <dd>
+                  {matchingCountAll} linked shift{matchingCountAll === 1 ? '' : 's'}
+                </dd>
+              </div>
+            )}
           </dl>
+
+          {overlaps.length > 0 && (
+            <div className={styles.overlapBox}>
+              <p className={styles.overlapTitle}>
+                Overlaps {overlaps.length} other shift{overlaps.length === 1 ? '' : 's'}
+              </p>
+              <ul className={styles.overlapList}>
+                {overlaps.map(o => (
+                  <li key={o.id}>
+                    <strong>{o.agent_name}</strong>
+                    <span>
+                      {formatShiftDate(o.start_at)} · {formatShiftTime(o.start_at)}–{formatShiftTime(o.end_at)}
+                    </span>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
 
           {canManage && (
             <>
@@ -147,15 +237,101 @@ export default function ShiftDetailModal({
                 </div>
               )}
 
-              <Button
-                type="button"
-                variant="danger"
-                size="md"
-                disabled={pending}
-                onClick={() => setConfirmDelete(true)}
-              >
-                Delete shift
-              </Button>
+              <div className={styles.deleteGroup}>
+                <Button
+                  type="button"
+                  variant="danger"
+                  size="md"
+                  disabled={pending}
+                  onClick={() => setConfirmOne(true)}
+                >
+                  Delete this shift
+                </Button>
+
+                {showMatchingButton && (
+                  <Button
+                    type="button"
+                    variant="danger"
+                    size="md"
+                    disabled={pending}
+                    onClick={() => {
+                      setMatchingScope('from_here')
+                      setMatchingOpen(true)
+                    }}
+                  >
+                    Delete matching shifts…
+                  </Button>
+                )}
+              </div>
+
+              {matchingOpen && (
+                <div className={styles.matchingBox}>
+                  <p className={styles.matchingTitle}>
+                    Delete matching hours for {shift.agent_name}
+                    <span>
+                      ({formatShiftTime(shift.start_at)} – {formatShiftTime(shift.end_at)})
+                    </span>
+                  </p>
+
+                  <label className={styles.scopeOption}>
+                    <input
+                      type="radio"
+                      name="matching-scope"
+                      checked={matchingScope === 'from_here'}
+                      onChange={() => setMatchingScope('from_here')}
+                      disabled={pending}
+                    />
+                    <span>
+                      <strong>This date and future</strong>
+                      <em>
+                        {matchingCountFromHere} shift
+                        {matchingCountFromHere === 1 ? '' : 's'} from{' '}
+                        {formatShiftDate(shift.start_at)} onward
+                      </em>
+                    </span>
+                  </label>
+
+                  <label className={styles.scopeOption}>
+                    <input
+                      type="radio"
+                      name="matching-scope"
+                      checked={matchingScope === 'all'}
+                      onChange={() => setMatchingScope('all')}
+                      disabled={pending}
+                    />
+                    <span>
+                      <strong>All matching (past + future)</strong>
+                      <em>
+                        {matchingCountAll} shift
+                        {matchingCountAll === 1 ? '' : 's'} with these hours
+                      </em>
+                    </span>
+                  </label>
+
+                  <div className={styles.transferActions}>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      disabled={pending}
+                      onClick={() => setMatchingOpen(false)}
+                    >
+                      Cancel
+                    </Button>
+                    <Button
+                      type="button"
+                      variant="danger"
+                      size="sm"
+                      disabled={pending || selectedCount === 0}
+                      onClick={handleDeleteMatching}
+                    >
+                      {pending
+                        ? 'Deleting…'
+                        : `Delete ${selectedCount} shift${selectedCount === 1 ? '' : 's'}`}
+                    </Button>
+                  </div>
+                </div>
+              )}
             </>
           )}
 
@@ -175,16 +351,16 @@ export default function ShiftDetailModal({
         </div>
       </Modal>
 
-      {confirmDelete && (
+      {confirmOne && (
         <ConfirmModal
           title="Delete shift?"
           message={`Remove ${shift.agent_name}'s shift on ${formatShiftDate(shift.start_at)}?`}
           confirmLabel="Delete"
           danger
           loading={pending}
-          onConfirm={handleDelete}
+          onConfirm={handleDeleteOne}
           onClose={() => {
-            if (!pending) setConfirmDelete(false)
+            if (!pending) setConfirmOne(false)
           }}
         />
       )}

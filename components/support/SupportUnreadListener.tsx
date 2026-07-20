@@ -14,10 +14,10 @@ export default function SupportUnreadListener() {
   const pathname = usePathname()
   const pathnameRef = useRef(pathname)
   pathnameRef.current = pathname
-  const audioCtxRef = useRef<AudioContext | null>(null)
+  const audioRef = useRef<HTMLAudioElement | null>(null)
   const lastSoundAtRef = useRef(0)
 
-  function playLoudSound() {
+  function playNotifySound() {
     const now = Date.now()
     // Prevent rapid beeps when multiple messages arrive quickly.
     if (now - lastSoundAtRef.current < 1500) return
@@ -25,48 +25,19 @@ export default function SupportUnreadListener() {
 
     if (typeof window === 'undefined') return
     try {
-      const AudioCtx =
-        window.AudioContext ||
-        // @ts-expect-error - Safari fallback
-        window.webkitAudioContext
-      if (!AudioCtx) return
-
-      let ctx = audioCtxRef.current
-      if (!ctx) {
-        ctx = new AudioCtx()
-        audioCtxRef.current = ctx
+      let audio = audioRef.current
+      if (!audio) {
+        audio = new Audio('/sounds/support-notify.wav')
+        audio.preload = 'auto'
+        // Clear and present, but not piercing.
+        audio.volume = 0.75
+        audioRef.current = audio
       }
 
-      void ctx.resume?.()
-
-      const startTime = ctx.currentTime + 0.01
-      const gain = ctx.createGain()
-      // Keep it loud but not clipping.
-      gain.gain.value = 0.9
-      gain.connect(ctx.destination)
-
-      const tone = (freq: number, t: number, dur: number) => {
-        const osc = ctx!.createOscillator()
-        osc.type = 'square'
-        osc.frequency.value = freq
-        osc.connect(gain)
-        osc.start(t)
-        osc.stop(t + dur)
-      }
-
-      // Two beeps.
-      tone(880, startTime, 0.12)
-      tone(1320, startTime + 0.16, 0.12)
-    } catch {
-      // Autoplay restrictions can block sound; ignore silently.
-    }
-
-    // Extra haptic feedback when supported.
-    try {
-      if (typeof navigator !== 'undefined' && 'vibrate' in navigator) {
-        const nav = navigator as Navigator & { vibrate?: (pattern: number) => void }
-        nav.vibrate?.(100)
-      }
+      audio.currentTime = 0
+      void audio.play().catch(() => {
+        // Autoplay restrictions can block sound until user interacts once.
+      })
     } catch {
       // ignore
     }
@@ -114,9 +85,9 @@ export default function SupportUnreadListener() {
 
             markSupportCustomerMessage(row.conversation_id)
 
-            // Loud beep only when this tab is in the background (not visible).
+            // Soft ding only when this tab is in the background (not visible).
             if (typeof document !== 'undefined' && document.hidden) {
-              playLoudSound()
+              playNotifySound()
             }
 
             if (

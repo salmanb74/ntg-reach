@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from 'react'
 import type { RealtimeChannel } from '@supabase/supabase-js'
 import { createClient, ensureRealtimeAuth } from '@/lib/supabase/client'
 import {
+  broadcastConversationMeta,
   broadcastDeleteMessage,
   broadcastNewMessage,
   subscribeToConversationMessages,
@@ -292,6 +293,10 @@ export default function ChatWindow({
       ]
     })
     await broadcastNewMessage(channelRef.current, row)
+    void broadcastConversationMeta({
+      id:              conversation.id,
+      last_message_at: row.created_at,
+    })
   }
 
   function appendLocalMessage(row: SupportMessageRow, senderName: string) {
@@ -315,6 +320,10 @@ export default function ChatWindow({
       ]
     })
     void broadcastNewMessage(channelRef.current, row)
+    void broadcastConversationMeta({
+      id:              row.conversation_id,
+      last_message_at: row.created_at,
+    })
   }
 
   async function confirmDeleteMessage() {
@@ -366,6 +375,10 @@ export default function ChatWindow({
     }
 
     onTitleChange(conversation.id, next || null)
+    void broadcastConversationMeta({
+      id:    conversation.id,
+      title: next || null,
+    })
   }
 
   if (!conversation) {
@@ -388,7 +401,7 @@ export default function ChatWindow({
           )}
           <div className={styles.emptyHeaderText}>
             <p className={styles.emptyTitle}>Select a conversation</p>
-            <p className={styles.emptyBody}>Or create a new one to start chatting.</p>
+            <p className={styles.emptyBody}>Customer chats will appear here when they message support.</p>
           </div>
         </header>
       </div>
@@ -444,13 +457,11 @@ export default function ChatWindow({
             {conversation.title?.trim() || 'New Chat'}
           </button>
         )}
-        <span
-          className={`${styles.statusBadge} ${
-            conversation.status === 'open' ? styles.statusOpen : styles.statusClosed
-          }`}
-        >
-          {conversation.status}
-        </span>
+        {conversation.status === 'closed' && (
+          <span className={`${styles.statusBadge} ${styles.statusClosed}`}>
+            closed
+          </span>
+        )}
         {onDelete && (
           <button
             type="button"

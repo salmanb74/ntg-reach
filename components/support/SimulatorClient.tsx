@@ -4,9 +4,11 @@ import { useEffect, useRef, useState } from 'react'
 import type { RealtimeChannel } from '@supabase/supabase-js'
 import { createClient, ensureRealtimeAuth } from '@/lib/supabase/client'
 import {
+  broadcastConversationMeta,
   broadcastDeleteMessage,
   broadcastNewMessage,
   subscribeToConversationMessages,
+  subscribeToConversationMeta,
   type SupportMessageRow,
 } from '@/lib/support/realtime'
 import { deleteSupportMessage } from '@/lib/support/upload'
@@ -54,6 +56,8 @@ export default function SimulatorClient({
   const [pendingDelete, setPendingDelete] = useState<ChatMessage | null>(null)
   const [deletingMsg, setDeletingMsg] = useState(false)
   const [offlineMessage, setOfflineMessage] = useState<string | null>(null)
+  // Tick so relative "X mins ago" labels refresh without new messages.
+  const [, setNowTick] = useState(0)
   const bottomRef = useRef<HTMLDivElement>(null)
   const nameCache = useRef<Record<string, string>>({})
   const channelRef = useRef<RealtimeChannel | null>(null)
@@ -71,6 +75,32 @@ export default function SimulatorClient({
 
   const bumpActivityRef = useRef(bumpActivity)
   bumpActivityRef.current = bumpActivity
+
+  useEffect(() => {
+    const id = window.setInterval(() => setNowTick(t => t + 1), 30_000)
+    return () => window.clearInterval(id)
+  }, [])
+
+  // Title / activity from support tab (and other clients)
+  useEffect(() => {
+    return subscribeToConversationMeta(row => {
+      setConversations(prev => {
+        if (!prev.some(c => c.id === row.id)) return prev
+        return sortConversationsByActivity(
+          prev.map(c =>
+            c.id === row.id
+              ? {
+                  ...c,
+                  title:           row.title !== undefined ? row.title : c.title,
+                  status:          row.status ?? c.status,
+                  last_message_at: row.last_message_at ?? c.last_message_at,
+                }
+              : c
+          )
+        )
+      })
+    })
+  }, [])
 
   function formatMsgTime(iso: string) {
     return new Date(iso).toLocaleString('en-PK', {
@@ -92,7 +122,7 @@ export default function SimulatorClient({
       if (cancelled) return
 
       channel = supabase
-        .channel('simulator-conversations-list')
+        .channel(`simulator-conversations-list:${tenantId}`)
         .on(
           'postgres_changes',
           {
@@ -110,7 +140,7 @@ export default function SimulatorClient({
                   c.id === row.id
                     ? {
                         ...c,
-                        title:           row.title ?? c.title,
+                        title:           row.title !== undefined ? row.title : c.title,
                         status:          row.status ?? c.status,
                         last_message_at: row.last_message_at ?? c.last_message_at,
                       }
@@ -148,6 +178,19 @@ export default function SimulatorClient({
               }
               return sortConversationsByActivity([item, ...prev])
             })
+          }
+        )
+        .on(
+          'postgres_changes',
+          {
+            event:  'INSERT',
+            schema: 'public',
+            table:  'support_messages',
+          },
+          (payload) => {
+            const row = payload.new as { conversation_id?: string; created_at?: string }
+            if (!row.conversation_id || !row.created_at) return
+            bumpActivityRef.current(row.conversation_id, row.created_at)
           }
         )
         .subscribe()
@@ -277,6 +320,22 @@ export default function SimulatorClient({
           if (!cancelled) {
             setMessages(prev => prev.filter(m => m.id !== messageId))
           }
+        },
+        onConversationUpdate: (row) => {
+          if (cancelled) return
+          setConversations(prev =>
+            sortConversationsByActivity(
+              prev.map(c =>
+                c.id === conversationId
+                  ? {
+                      ...c,
+                      title:           row.title !== undefined ? row.title : c.title,
+                      last_message_at: row.last_message_at ?? c.last_message_at,
+                    }
+                  : c
+              )
+            )
+          )
         },
       })
 
@@ -417,6 +476,10 @@ export default function SimulatorClient({
       ]
     })
     await broadcastNewMessage(channelRef.current, row)
+    void broadcastConversationMeta({
+      id:              selected.id,
+      last_message_at: row.created_at,
+    })
   }
 
   function appendLocalMessage(row: SupportMessageRow, senderName: string) {
@@ -440,6 +503,10 @@ export default function SimulatorClient({
       ]
     })
     void broadcastNewMessage(channelRef.current, row)
+    void broadcastConversationMeta({
+      id:              row.conversation_id,
+      last_message_at: row.created_at,
+    })
   }
 
   async function confirmDeleteMessage() {

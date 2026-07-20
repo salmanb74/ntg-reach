@@ -2,13 +2,10 @@
 
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { createClient, ensureRealtimeAuth } from '@/lib/supabase/client'
-import Button from '@/components/ui/Button'
 import ConfirmModal from '@/components/modals/ConfirmModal'
 import ChatWindow from './ChatWindow'
 import type { ConversationItem, TenantGroup } from './types'
 import {
-  TEST_TENANT_ID,
-  TEST_TENANT_NAME,
   formatLastMessageAgo,
   groupConversationsByTenant,
 } from './types'
@@ -17,6 +14,7 @@ import {
   setActiveSupportConversation,
   subscribeSupportUnread,
 } from '@/lib/support/unreadStore'
+import { subscribeToConversationMeta } from '@/lib/support/realtime'
 import styles from './ConversationList.module.css'
 
 interface Props {
@@ -36,12 +34,13 @@ export default function ConversationList({
   )
   const [unreadIds, setUnreadIds] = useState<Set<string>>(() => new Set())
   const [messageCounts, setMessageCounts] = useState<Record<string, number>>({})
-  const [creating, setCreating] = useState(false)
   const [deletingId, setDeletingId] = useState<string | null>(null)
   const [pendingDelete, setPendingDelete] = useState<{ id: string; label: string } | null>(null)
   const [listOpen, setListOpen] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [collapsedTenants, setCollapsedTenants] = useState<Set<string>>(() => new Set())
+  // Tick so relative "X mins ago" labels refresh without new messages.
+  const [, setNowTick] = useState(0)
   const selectedIdRef = useRef(selectedId)
   selectedIdRef.current = selectedId
 
@@ -52,6 +51,11 @@ export default function ConversationList({
     setActiveSupportConversation(selectedId)
     return () => setActiveSupportConversation(null)
   }, [selectedId])
+
+  useEffect(() => {
+    const id = window.setInterval(() => setNowTick(t => t + 1), 30_000)
+    return () => window.clearInterval(id)
+  }, [])
 
   // Keep local unread dots in sync with shared store
   useEffect(() => {
@@ -70,7 +74,35 @@ export default function ConversationList({
     })
   }, [])
 
-  // Realtime list sync — enable support_conversations in Database → Replication
+  const applyMeta = useCallback((row: {
+    id: string
+    title?: string | null
+    last_message_at?: string | null
+    status?: ConversationItem['status']
+  }) => {
+    setGroups(prev => {
+      const all = prev.flatMap(g => g.conversations)
+      if (!all.some(c => c.id === row.id)) return prev
+      const next = all.map(c =>
+        c.id === row.id
+          ? {
+              ...c,
+              title:           row.title !== undefined ? row.title : c.title,
+              status:          row.status ?? c.status,
+              last_message_at: row.last_message_at ?? c.last_message_at,
+            }
+          : c
+      )
+      return groupConversationsByTenant(next)
+    })
+  }, [])
+
+  // Title / activity from other tabs (broadcast — more reliable than UPDATE alone)
+  useEffect(() => {
+    return subscribeToConversationMeta(applyMeta)
+  }, [applyMeta])
+
+  // Realtime list sync — enable support_conversations + support_messages in Replication
   useEffect(() => {
     const supabase = createClient()
     let cancelled = false
@@ -106,7 +138,7 @@ export default function ConversationList({
                 c.id === row.id
                   ? {
                       ...c,
-                      title:           row.title ?? c.title,
+                      title:           row.title !== undefined ? row.title : c.title,
                       status:          row.status ?? c.status,
                       assigned_to:     row.assigned_to !== undefined ? row.assigned_to : c.assigned_to,
                       last_message_at: row.last_message_at ?? c.last_message_at,
@@ -168,6 +200,20 @@ export default function ConversationList({
             }
           }
         )
+        // Any new message → bump activity + re-sort (even if conversation UPDATE lags)
+        .on(
+          'postgres_changes',
+          {
+            event:  'INSERT',
+            schema: 'public',
+            table:  'support_messages',
+          },
+          (payload) => {
+            const row = payload.new as { conversation_id?: string; created_at?: string }
+            if (!row.conversation_id || !row.created_at) return
+            bumpActivity(row.conversation_id, row.created_at)
+          }
+        )
         .subscribe()
     }
 
@@ -177,55 +223,7 @@ export default function ConversationList({
       cancelled = true
       if (channel) supabase.removeChannel(channel)
     }
-  }, [])
-
-  async function handleNewConversation() {
-    setError(null)
-    setCreating(true)
-    const supabase = createClient()
-    const { data, error: insertError } = await supabase
-      .from('support_conversations')
-      .insert({
-        tenant_id:   TEST_TENANT_ID,
-        tenant_name: TEST_TENANT_NAME,
-        status:      'open',
-        created_by:  currentUserId,
-        title:       null,
-      })
-      .select('*')
-      .single()
-
-    setCreating(false)
-
-    if (insertError || !data) {
-      setError(insertError?.message ?? 'Failed to create conversation')
-      return
-    }
-
-    const now = data.last_message_at ?? data.created_at
-    const item: ConversationItem = {
-      id:              data.id,
-      tenant_id:       data.tenant_id,
-      tenant_name:     data.tenant_name,
-      title:           data.title,
-      status:          data.status,
-      created_by:      data.created_by,
-      assigned_to:     data.assigned_to,
-      assigned_name:   null,
-      created_at:      data.created_at,
-      last_message_at: now,
-      closed_at:       data.closed_at,
-      product:         data.product,
-    }
-
-    setGroups(prev => {
-      const all = [item, ...prev.flatMap(g => g.conversations)]
-      return groupConversationsByTenant(all)
-    })
-    setSelectedId(item.id)
-    clearSupportUnread(item.id)
-    setListOpen(false)
-  }
+  }, [bumpActivity])
 
   function handleTitleChange(id: string, title: string | null) {
     setGroups(prev =>
@@ -318,14 +316,6 @@ export default function ConversationList({
         <div className={styles.listHeader}>
           <h2 className={styles.listTitle}>Conversations</h2>
           <div className={styles.listHeaderActions}>
-            <Button
-              variant="primary"
-              size="sm"
-              onClick={handleNewConversation}
-              disabled={creating}
-            >
-              {creating ? 'Creating…' : 'New Conversation'}
-            </Button>
             <button
               type="button"
               className={styles.closeListBtn}
@@ -344,7 +334,7 @@ export default function ConversationList({
 
         <div className={styles.listScroll}>
           {groups.length === 0 && (
-            <p className={styles.empty}>No conversations yet. Start one above.</p>
+            <p className={styles.empty}>No conversations yet. Waiting for customers to start a chat.</p>
           )}
 
           {groups.map(group => {
@@ -403,13 +393,12 @@ export default function ConversationList({
                                 {isUnread && <span className={styles.unreadDot} aria-hidden="true" />}
                                 {conv.title?.trim() || 'New Chat'}
                               </span>
-                              <span
-                                className={`${styles.badge} ${
-                                  conv.status === 'open' ? styles.badgeOpen : styles.badgeClosed
-                                }`}
-                              >
-                                {conv.status}
-                              </span>
+                              {/* Only show when closed — "open" is the default and just noise */}
+                              {conv.status === 'closed' && (
+                                <span className={`${styles.badge} ${styles.badgeClosed}`}>
+                                  closed
+                                </span>
+                              )}
                             </div>
                             <div className={styles.convMeta}>
                               <span>{conv.assigned_name ?? 'Unassigned'}</span>

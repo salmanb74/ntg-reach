@@ -15,14 +15,14 @@ export default async function SupportCalendarPage() {
 
   // Wide window so week navigation still has shift data
   const rangeStart = new Date(now.getFullYear(), now.getMonth() - 6, 1)
-  const rangeEnd = new Date(now.getFullYear(), now.getMonth() + 8, 0, 23, 59, 59, 999)
+  const rangeEnd = new Date(now.getFullYear(), now.getMonth() + 14, 0, 23, 59, 59, 999)
 
   const [profile, onDuty, { data: shiftRows }, { data: profiles }] = await Promise.all([
     getCachedProfile(),
     getCurrentOnDuty(),
     supabase
       .from('support_shifts')
-      .select('id, agent_id, start_at, end_at, created_by, created_at')
+      .select('id, agent_id, start_at, end_at, created_by, created_at, series_id')
       .gte('end_at', rangeStart.toISOString())
       .lte('start_at', rangeEnd.toISOString())
       .order('start_at', { ascending: true }),
@@ -68,6 +68,7 @@ export default async function SupportCalendarPage() {
     end_at:     s.end_at,
     created_by: s.created_by,
     created_at: s.created_at,
+    series_id:  (s as { series_id?: string | null }).series_id ?? null,
   }))
 
   return (

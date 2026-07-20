@@ -11,10 +11,9 @@ import {
   formatHourLabel,
   formatShiftTime,
   formatWeekLabel,
+  layoutShiftsForDay,
   nowPositionInDay,
   sameDay,
-  shiftPositionInDay,
-  shiftsForDay,
   startOfWeek,
   type ShiftAgent,
   type ShiftItem,
@@ -165,7 +164,7 @@ export default function CalendarClient({
           <div className={styles.days}>
             {days.map(day => {
               const isToday = sameDay(day, today)
-              const dayShifts = shiftsForDay(initialShifts, day)
+              const laidOut = layoutShiftsForDay(initialShifts, day)
               const nowPct = nowPositionInDay(day)
 
               return (
@@ -186,24 +185,31 @@ export default function CalendarClient({
                     />
                   )}
 
-                  {dayShifts.map(shift => {
-                    const pos = shiftPositionInDay(shift, day)
-                    if (!pos) return null
+                  {laidOut.map(item => {
+                    const gap = 2
+                    const widthPct = 100 / item.colCount
+                    const leftPct = item.col * widthPct
                     return (
                       <button
-                        key={shift.id}
+                        key={item.shift.id}
                         type="button"
-                        className={`${styles.block} ${styles[`c${agentColorIndex(shift.agent_id)}`]}`}
+                        className={`${styles.block} ${styles[`c${agentColorIndex(item.shift.agent_id)}`]} ${
+                          item.overlaps ? styles.blockOverlap : ''
+                        }`}
                         style={{
-                          ['--shift-top' as string]:    `${pos.topPct}%`,
-                          ['--shift-height' as string]: `${pos.heightPct}%`,
+                          ['--shift-top' as string]:    `${item.topPct}%`,
+                          ['--shift-height' as string]: `${item.heightPct}%`,
+                          ['--shift-left' as string]:   `calc(${leftPct}% + ${gap}px)`,
+                          ['--shift-width' as string]:  `calc(${widthPct}% - ${gap * 2}px)`,
                         }}
-                        onClick={() => setSelected(shift)}
-                        title={`${shift.agent_name} · ${formatShiftTime(shift.start_at)}–${formatShiftTime(shift.end_at)}`}
+                        onClick={() => setSelected(item.shift)}
+                        title={`${item.shift.agent_name} · ${formatShiftTime(item.shift.start_at)}–${formatShiftTime(item.shift.end_at)}${
+                          item.overlaps ? ' · overlaps another shift' : ''
+                        }`}
                       >
-                        <span className={styles.blockName}>{shift.agent_name}</span>
+                        <span className={styles.blockName}>{item.shift.agent_name}</span>
                         <span className={styles.blockTime}>
-                          {formatShiftTime(shift.start_at)}–{formatShiftTime(shift.end_at)}
+                          {formatShiftTime(item.shift.start_at)}–{formatShiftTime(item.shift.end_at)}
                         </span>
                       </button>
                     )
@@ -228,6 +234,7 @@ export default function CalendarClient({
         <ShiftDetailModal
           shift={selected}
           agents={agents}
+          allShifts={initialShifts}
           canManage={canManage}
           onClose={() => setSelected(null)}
         />

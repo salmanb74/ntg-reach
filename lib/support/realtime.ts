@@ -196,3 +196,94 @@ export async function broadcastDeleteMessage(
     console.warn('[support realtime] delete_message broadcast:', status)
   }
 }
+
+export type ConversationMetaUpdate = {
+  id: string
+  title?: string | null
+  last_message_at?: string | null
+  status?: 'open' | 'closed'
+}
+
+const META_CHANNEL = 'support-conversations-meta'
+
+type MetaListener = (row: ConversationMetaUpdate) => void
+
+const metaListeners = new Set<MetaListener>()
+let metaChannel: RealtimeChannel | null = null
+let metaChannelReady: Promise<RealtimeChannel | null> | null = null
+
+async function ensureMetaChannel(): Promise<RealtimeChannel | null> {
+  if (typeof window === 'undefined') return null
+  if (metaChannel) return metaChannel
+  if (metaChannelReady) return metaChannelReady
+
+  metaChannelReady = (async () => {
+    const supabase = createClient()
+    await ensureRealtimeAuth(supabase)
+
+    for (const existing of supabase.getChannels()) {
+      if (existing.topic === `realtime:${META_CHANNEL}`) {
+        supabase.removeChannel(existing)
+      }
+    }
+
+    const channel = supabase
+      .channel(META_CHANNEL, {
+        config: { broadcast: { self: false } },
+      })
+      .on('broadcast', { event: 'conversation_meta' }, (msg) => {
+        const row = readBroadcastPayload<ConversationMetaUpdate>(msg)
+        if (!row?.id) return
+        for (const listener of metaListeners) listener(row)
+      })
+
+    await new Promise<void>((resolve) => {
+      const timeout = setTimeout(() => resolve(), 5000)
+      channel.subscribe((status) => {
+        if (
+          status === 'SUBSCRIBED' ||
+          status === 'CHANNEL_ERROR' ||
+          status === 'TIMED_OUT' ||
+          status === 'CLOSED'
+        ) {
+          clearTimeout(timeout)
+          resolve()
+        }
+      })
+    })
+
+    metaChannel = channel
+    return channel
+  })().catch(() => {
+    metaChannelReady = null
+    return null
+  })
+
+  return metaChannelReady
+}
+
+/**
+ * Cross-tab sync for conversation title / last activity.
+ * Complements postgres UPDATE (which can miss or lag).
+ */
+export function subscribeToConversationMeta(listener: MetaListener) {
+  metaListeners.add(listener)
+  void ensureMetaChannel()
+  return () => {
+    metaListeners.delete(listener)
+  }
+}
+
+/** Notify Chats + Simulator lists of title / activity changes. */
+export async function broadcastConversationMeta(row: ConversationMetaUpdate) {
+  const channel = await ensureMetaChannel()
+  if (!channel) return
+  const status = await channel.send({
+    type:    'broadcast',
+    event:   'conversation_meta',
+    payload: row,
+  })
+  if (status !== 'ok') {
+    console.warn('[support realtime] conversation_meta broadcast:', status)
+  }
+}
