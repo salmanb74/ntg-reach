@@ -52,6 +52,7 @@ export type ActivityType =
   | 'meeting'
   | 'note'
   | 'stage_change'
+  | 'site_visit'
 
 // ─── Lead Sources ─────────────────────────────────────────────────────
 export type LeadSource =

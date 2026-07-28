@@ -78,7 +78,7 @@ create table if not exists public.activities (
   type             text not null
                    check (type in (
                      'email_outbound','email_inbound','whatsapp_log',
-                     'call','meeting','note','stage_change'
+                     'call','meeting','note','stage_change','site_visit'
                    )),
   subject          text,
   body             text,

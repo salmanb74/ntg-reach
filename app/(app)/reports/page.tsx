@@ -32,7 +32,9 @@ export default async function ReportsPage({
 
   // ── Derived values ─────────────────────────────────────────
   const repUsers = (allUsers ?? []).filter(u =>
-    (u.roles as string[] ?? []).includes('sales_rep')
+    (u.roles as string[] ?? []).some(r =>
+      r === 'crm_sales_rep' || r === 'crm_manager' || r === 'crm_admin'
+    )
   )
   const selectedRepId    = searchParams.rep ?? repUsers[0]?.id ?? profile?.id ?? ''
   const inputCurrency    = settingsMap['input_currency']  ?? 'PKR'

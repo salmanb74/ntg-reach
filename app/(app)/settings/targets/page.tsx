@@ -14,9 +14,11 @@ export default async function TargetsSettingsPage() {
     .select('id, full_name, email, roles')
     .order('full_name')
 
-  // Only sales reps in the selector
+  // CRM sales users in the selector (role rename: sales_rep → crm_sales_rep)
   const repUsers = (allUsers ?? []).filter(u =>
-    (u.roles as string[] ?? []).includes('sales_rep')
+    (u.roles as string[] ?? []).some(r =>
+      r === 'crm_sales_rep' || r === 'crm_manager' || r === 'crm_admin'
+    )
   )
 
   const { data: targets } = await supabase

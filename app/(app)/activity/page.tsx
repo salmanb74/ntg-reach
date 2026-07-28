@@ -22,10 +22,10 @@ export default async function ActivityPage({
   const allUsers = usersResult.data
 
   const repUsers = (allUsers ?? []).filter(u =>
-    (u.roles as string[] ?? []).includes('sales_rep')
+    (u.roles as string[] ?? []).some(r => String(r).startsWith('crm_'))
   )
 
-  const selectedRepId = searchParams.rep ?? profile?.id ?? ''
+  const selectedRepId = searchParams.rep ?? repUsers[0]?.id ?? profile?.id ?? ''
 
   const { data: activities } = await supabase
     .from('activities')
