@@ -45,7 +45,11 @@ create table if not exists public.support_conversations (
   created_at   timestamptz not null default now(),
   closed_at    timestamptz,
   product      text not null default 'resto',
-  last_message_at timestamptz not null default now()
+  last_message_at timestamptz not null default now(),
+  support_category text not null default 'platform'
+                   check (support_category in ('platform', 'operational')),
+  logged_minutes integer not null default 0
+                 check (logged_minutes >= 0 and logged_minutes % 5 = 0)
 );
 
 create index if not exists support_conversations_status_idx
@@ -70,14 +74,8 @@ create policy "support_conversations_insert" on public.support_conversations
 
 create policy "support_conversations_update" on public.support_conversations
   for update to authenticated
-  using (
-    public.is_cs_admin_user()
-    or (public.is_cs_agent() and created_by = auth.uid())
-  )
-  with check (
-    public.is_cs_admin_user()
-    or (public.is_cs_agent() and created_by = auth.uid())
-  );
+  using (public.is_cs_agent())
+  with check (public.is_cs_agent());
 
 create policy "support_conversations_delete" on public.support_conversations
   for delete to authenticated
@@ -89,11 +87,12 @@ create table if not exists public.support_messages (
   conversation_id uuid not null references public.support_conversations(id) on delete cascade,
   sender_id       uuid not null references auth.users(id),
   sender_type     text not null check (sender_type in ('agent', 'customer')),
-  message_type    text not null check (message_type in ('text', 'image', 'voice')),
+  message_type    text not null check (message_type in ('text', 'image', 'voice', 'video')),
   content         text,
   file_url        text,
   created_at      timestamptz not null default now(),
-  read_at         timestamptz
+  read_at         timestamptz,
+  expires_at      timestamptz
 );
 
 create index if not exists support_messages_conversation_idx

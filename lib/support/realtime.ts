@@ -20,11 +20,12 @@ export type SupportMessageRow = {
   conversation_id: string
   sender_id: string
   sender_type: 'agent' | 'customer'
-  message_type: 'text' | 'image' | 'voice'
+  message_type: 'text' | 'image' | 'voice' | 'video'
   content: string | null
   file_url: string | null
   created_at: string
   read_at: string | null
+  expires_at?: string | null
 }
 
 export function conversationChannelName(conversationId: string) {
@@ -46,6 +47,7 @@ export function rowToChatMessage(
     file_url:        row.file_url,
     created_at:      row.created_at,
     read_at:         row.read_at,
+    expires_at:      row.expires_at ?? null,
   }
 }
 
@@ -202,6 +204,8 @@ export type ConversationMetaUpdate = {
   title?: string | null
   last_message_at?: string | null
   status?: 'open' | 'closed'
+  support_category?: 'platform' | 'operational'
+  logged_minutes?: number
 }
 
 const META_CHANNEL = 'support-conversations-meta'

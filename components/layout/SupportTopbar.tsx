@@ -16,7 +16,7 @@ const TITLES: { match: string; title: string }[] = [
   { match: '/support/simulator', title: 'Simulator' },
   { match: '/support/activity',  title: 'Activity' },
   { match: '/support/time',      title: 'Time Logging' },
-  { match: '/support/reports',   title: 'Reports' },
+  { match: '/support/reports',   title: 'Hours' },
   { match: '/support/settings',  title: 'Settings' },
   { match: '/support/dashboard', title: 'Dashboard' },
 ]

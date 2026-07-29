@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import type { RealtimeChannel } from '@supabase/supabase-js'
 import { createClient, ensureRealtimeAuth } from '@/lib/supabase/client'
 import {
@@ -16,10 +16,15 @@ import Button from '@/components/ui/Button'
 import ConfirmModal from '@/components/modals/ConfirmModal'
 import ImageUploader from './ImageUploader'
 import MessageBody from './MessageBody'
+import ScreenshotCapture from './ScreenshotCapture'
+import ScreenRecorder from './ScreenRecorder'
 import VoiceRecorder from './VoiceRecorder'
 import type { ChatMessage, ConversationItem } from './types'
 import {
+  SUPPORT_CATEGORY_LABELS,
   formatLastMessageAgo,
+  formatLoggedMinutes,
+  mapConversationRow,
   sortConversationsByActivity,
 } from './types'
 import { getSupportCoverageState } from '@/lib/actions/support-shifts'
@@ -53,6 +58,8 @@ export default function SimulatorClient({
   const [error, setError] = useState<string | null>(null)
   const [voiceActive, setVoiceActive] = useState(false)
   const [imageActive, setImageActive] = useState(false)
+  const [shotActive, setShotActive] = useState(false)
+  const [recActive, setRecActive] = useState(false)
   const [pendingDelete, setPendingDelete] = useState<ChatMessage | null>(null)
   const [deletingMsg, setDeletingMsg] = useState(false)
   const [offlineMessage, setOfflineMessage] = useState<string | null>(null)
@@ -61,9 +68,33 @@ export default function SimulatorClient({
   const bottomRef = useRef<HTMLDivElement>(null)
   const nameCache = useRef<Record<string, string>>({})
   const channelRef = useRef<RealtimeChannel | null>(null)
-  const mediaActive = voiceActive || imageActive
+  const mediaActive = voiceActive || imageActive || shotActive || recActive
 
   const selected = conversations.find(c => c.id === selectedId) ?? null
+  const composerLocked = selected?.status === 'closed'
+
+  const monthTotals = useMemo(() => {
+    const thisMonth = new Intl.DateTimeFormat('en-CA', {
+      timeZone: 'Asia/Karachi',
+      year:  'numeric',
+      month: '2-digit',
+    }).format(new Date())
+
+    let platform = 0
+    let operational = 0
+    for (const c of conversations) {
+      const key = new Intl.DateTimeFormat('en-CA', {
+        timeZone: 'Asia/Karachi',
+        year:  'numeric',
+        month: '2-digit',
+      }).format(new Date(c.created_at))
+      if (key !== thisMonth) continue
+      if (c.support_category === 'operational') operational += c.logged_minutes
+      else platform += c.logged_minutes
+    }
+
+    return { platform, operational }
+  }, [conversations])
 
   function bumpActivity(conversationId: string, at: string) {
     setConversations(prev =>
@@ -91,9 +122,11 @@ export default function SimulatorClient({
             c.id === row.id
               ? {
                   ...c,
-                  title:           row.title !== undefined ? row.title : c.title,
-                  status:          row.status ?? c.status,
-                  last_message_at: row.last_message_at ?? c.last_message_at,
+                  title:            row.title !== undefined ? row.title : c.title,
+                  status:           row.status ?? c.status,
+                  last_message_at:  row.last_message_at ?? c.last_message_at,
+                  support_category: row.support_category ?? c.support_category,
+                  logged_minutes:   row.logged_minutes ?? c.logged_minutes,
                 }
               : c
           )
@@ -140,9 +173,11 @@ export default function SimulatorClient({
                   c.id === row.id
                     ? {
                         ...c,
-                        title:           row.title !== undefined ? row.title : c.title,
-                        status:          row.status ?? c.status,
-                        last_message_at: row.last_message_at ?? c.last_message_at,
+                        title:            row.title !== undefined ? row.title : c.title,
+                        status:           row.status ?? c.status,
+                        last_message_at:  row.last_message_at ?? c.last_message_at,
+                        support_category: row.support_category ?? c.support_category,
+                        logged_minutes:   row.logged_minutes ?? c.logged_minutes,
                       }
                     : c
                 )
@@ -159,23 +194,9 @@ export default function SimulatorClient({
             filter: `tenant_id=eq.${tenantId}`,
           },
           (payload) => {
-            const row = payload.new as ConversationItem
             setConversations(prev => {
-              if (prev.some(c => c.id === row.id)) return prev
-              const item: ConversationItem = {
-                id:              row.id,
-                tenant_id:       row.tenant_id,
-                tenant_name:     row.tenant_name,
-                title:           row.title,
-                status:          row.status,
-                created_by:      row.created_by,
-                assigned_to:     row.assigned_to,
-                assigned_name:   null,
-                created_at:      row.created_at,
-                last_message_at: row.last_message_at ?? row.created_at,
-                closed_at:       row.closed_at,
-                product:         row.product,
-              }
+              if (prev.some(c => c.id === String((payload.new as { id?: string }).id))) return prev
+              const item = mapConversationRow(payload.new as Record<string, unknown>)
               return sortConversationsByActivity([item, ...prev])
             })
           }
@@ -242,6 +263,7 @@ export default function SimulatorClient({
         file_url:        row.file_url,
         created_at:      row.created_at,
         read_at:         row.read_at,
+        expires_at:      row.expires_at ?? null,
       }
       setMessages(prev => {
         if (prev.some(m => m.id === msg.id)) return prev
@@ -256,6 +278,8 @@ export default function SimulatorClient({
       setDraft('')
       setVoiceActive(false)
       setImageActive(false)
+      setShotActive(false)
+      setRecActive(false)
 
       await ensureRealtimeAuth(supabase)
 
@@ -306,6 +330,7 @@ export default function SimulatorClient({
           file_url:        r.file_url,
           created_at:      r.created_at,
           read_at:         r.read_at,
+          expires_at:      r.expires_at ?? null,
         }))
       )
       setLoading(false)
@@ -406,20 +431,7 @@ export default function SimulatorClient({
       return
     }
 
-    const item: ConversationItem = {
-      id:              data.id,
-      tenant_id:       data.tenant_id,
-      tenant_name:     data.tenant_name,
-      title:           data.title,
-      status:          data.status,
-      created_by:      data.created_by,
-      assigned_to:     data.assigned_to,
-      assigned_name:   null,
-      created_at:      data.created_at,
-      last_message_at: data.last_message_at ?? data.created_at,
-      closed_at:       data.closed_at,
-      product:         data.product,
-    }
+    const item = mapConversationRow(data as Record<string, unknown>)
 
     setConversations(prev => sortConversationsByActivity([item, ...prev]))
     setSelectedId(item.id)
@@ -472,6 +484,7 @@ export default function SimulatorClient({
           file_url:        row.file_url,
           created_at:      row.created_at,
           read_at:         row.read_at,
+          expires_at:      row.expires_at ?? null,
         },
       ]
     })
@@ -499,6 +512,7 @@ export default function SimulatorClient({
           file_url:        row.file_url,
           created_at:      row.created_at,
           read_at:         row.read_at,
+          expires_at:      row.expires_at ?? null,
         },
       ]
     })
@@ -514,10 +528,7 @@ export default function SimulatorClient({
     setDeletingMsg(true)
     setError(null)
 
-    const result = await deleteSupportMessage({
-      id:      pendingDelete.id,
-      fileUrl: pendingDelete.file_url,
-    })
+    const result = await deleteSupportMessage({ id: pendingDelete.id })
 
     if (result.error) {
       setError(result.error)
@@ -556,6 +567,14 @@ export default function SimulatorClient({
             <div>
               <h2 className={styles.listTitle}>{tenantName}</h2>
               <p className={styles.listSub}>Customer chats</p>
+              <div className={styles.monthTotals}>
+                <span>
+                  Platform {formatLoggedMinutes(monthTotals.platform)}
+                </span>
+                <span>
+                  Operational {formatLoggedMinutes(monthTotals.operational)}
+                </span>
+              </div>
             </div>
             <div className={styles.listHeaderActions}>
               <Button
@@ -644,7 +663,16 @@ export default function SimulatorClient({
                 <h3 className={styles.chatTitle}>
                   {selected.title?.trim() || 'New Chat'}
                 </h3>
-                <span className={styles.chatHint}>NTG Support</span>
+                <div className={styles.chatMeta}>
+                  <span className={styles.chatHint}>
+                    {SUPPORT_CATEGORY_LABELS[selected.support_category]}
+                  </span>
+                  {selected.logged_minutes > 0 && (
+                    <span className={styles.chatMinutes}>
+                      {formatLoggedMinutes(selected.logged_minutes)} logged
+                    </span>
+                  )}
+                </div>
               </header>
 
               {offlineMessage && (
@@ -660,7 +688,10 @@ export default function SimulatorClient({
                 )}
                 {messages.map(msg => {
                   const isMine = msg.sender_type === 'customer' && msg.sender_id === currentUserId
-                  const mediaBubble = msg.message_type === 'image' || msg.message_type === 'voice'
+                  const mediaBubble =
+                    msg.message_type === 'image' ||
+                    msg.message_type === 'voice' ||
+                    msg.message_type === 'video'
                   return (
                     <div
                       key={msg.id}
@@ -707,8 +738,26 @@ export default function SimulatorClient({
                   conversationId={selected.id}
                   senderId={currentUserId}
                   senderType="customer"
-                  disabled={selected.status === 'closed' || voiceActive}
+                  disabled={!!composerLocked || voiceActive || shotActive || recActive}
                   onActiveChange={setImageActive}
+                  onError={setError}
+                  onSent={(row) => appendLocalMessage(row, customerDisplayName)}
+                />
+                <ScreenshotCapture
+                  conversationId={selected.id}
+                  senderId={currentUserId}
+                  senderType="customer"
+                  disabled={!!composerLocked || voiceActive || imageActive || recActive}
+                  onActiveChange={setShotActive}
+                  onError={setError}
+                  onSent={(row) => appendLocalMessage(row, customerDisplayName)}
+                />
+                <ScreenRecorder
+                  conversationId={selected.id}
+                  senderId={currentUserId}
+                  senderType="customer"
+                  disabled={!!composerLocked || voiceActive || imageActive || shotActive}
+                  onActiveChange={setRecActive}
                   onError={setError}
                   onSent={(row) => appendLocalMessage(row, customerDisplayName)}
                 />
@@ -716,7 +765,7 @@ export default function SimulatorClient({
                   conversationId={selected.id}
                   senderId={currentUserId}
                   senderType="customer"
-                  disabled={selected.status === 'closed' || imageActive}
+                  disabled={!!composerLocked || imageActive || shotActive || recActive}
                   onActiveChange={setVoiceActive}
                   onError={setError}
                   onSent={(row) => appendLocalMessage(row, customerDisplayName)}
@@ -726,7 +775,7 @@ export default function SimulatorClient({
                   value={draft}
                   onChange={e => setDraft(e.target.value)}
                   placeholder="Message NTG Support…"
-                  disabled={sending || mediaActive || selected.status === 'closed'}
+                  disabled={sending || mediaActive || !!composerLocked}
                   aria-label="Customer message"
                 />
                 <Button
@@ -737,7 +786,7 @@ export default function SimulatorClient({
                     sending ||
                     mediaActive ||
                     !draft.trim() ||
-                    selected.status === 'closed'
+                    !!composerLocked
                   }
                 >
                   {sending ? 'Sending…' : 'Send'}

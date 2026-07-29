@@ -15,8 +15,15 @@ import Button from '@/components/ui/Button'
 import ConfirmModal from '@/components/modals/ConfirmModal'
 import ImageUploader from './ImageUploader'
 import MessageBody from './MessageBody'
+import ScreenshotCapture from './ScreenshotCapture'
+import ScreenRecorder from './ScreenRecorder'
 import VoiceRecorder from './VoiceRecorder'
-import type { ChatMessage, ConversationItem } from './types'
+import type { ChatMessage, ConversationItem, SupportCategory } from './types'
+import {
+  SUPPORT_CATEGORY_LABELS,
+  formatLoggedMinutes,
+  snapMinutes,
+} from './types'
 import { getSupportCoverageState } from '@/lib/actions/support-shifts'
 import styles from './ChatWindow.module.css'
 
@@ -25,6 +32,10 @@ interface Props {
   currentUserId:    string
   currentUserName:  string
   onTitleChange:    (id: string, title: string | null) => void
+  onConversationPatch?: (
+    id: string,
+    patch: Partial<Pick<ConversationItem, 'support_category' | 'logged_minutes' | 'title'>>
+  ) => void
   onDelete?:        (id: string) => void
   onOpenList?:      () => void
   onMessageActivity?: (conversationId: string, at: string) => void
@@ -45,6 +56,7 @@ export default function ChatWindow({
   currentUserId,
   currentUserName,
   onTitleChange,
+  onConversationPatch,
   onDelete,
   onOpenList,
   onMessageActivity,
@@ -59,6 +71,9 @@ export default function ChatWindow({
   const [error, setError] = useState<string | null>(null)
   const [voiceActive, setVoiceActive] = useState(false)
   const [imageActive, setImageActive] = useState(false)
+  const [shotActive, setShotActive] = useState(false)
+  const [recActive, setRecActive] = useState(false)
+  const [savingMeta, setSavingMeta] = useState(false)
   const [pendingDelete, setPendingDelete] = useState<ChatMessage | null>(null)
   const [deletingMsg, setDeletingMsg] = useState(false)
   const [offlineMessage, setOfflineMessage] = useState<string | null>(null)
@@ -67,7 +82,7 @@ export default function ChatWindow({
   const onMessageActivityRef = useRef(onMessageActivity)
   onMessageActivityRef.current = onMessageActivity
   const channelRef = useRef<RealtimeChannel | null>(null)
-  const mediaActive = voiceActive || imageActive
+  const mediaActive = voiceActive || imageActive || shotActive || recActive
 
   useEffect(() => {
     if (!conversation) {
@@ -109,6 +124,7 @@ export default function ChatWindow({
         file_url:        row.file_url,
         created_at:      row.created_at,
         read_at:         row.read_at,
+        expires_at:      row.expires_at ?? null,
       }
       setMessages(prev => {
         if (prev.some(m => m.id === msg.id)) return prev
@@ -172,6 +188,7 @@ export default function ChatWindow({
           file_url:        r.file_url,
           created_at:      r.created_at,
           read_at:         r.read_at,
+          expires_at:      r.expires_at ?? null,
         }))
       )
       setLoading(false)
@@ -289,6 +306,7 @@ export default function ChatWindow({
           file_url:        row.file_url,
           created_at:      row.created_at,
           read_at:         row.read_at,
+          expires_at:      row.expires_at ?? null,
         },
       ]
     })
@@ -316,6 +334,7 @@ export default function ChatWindow({
           file_url:        row.file_url,
           created_at:      row.created_at,
           read_at:         row.read_at,
+          expires_at:      row.expires_at ?? null,
         },
       ]
     })
@@ -331,10 +350,7 @@ export default function ChatWindow({
     setDeletingMsg(true)
     setError(null)
 
-    const result = await deleteSupportMessage({
-      id:      pendingDelete.id,
-      fileUrl: pendingDelete.file_url,
-    })
+    const result = await deleteSupportMessage({ id: pendingDelete.id })
 
     if (result.error) {
       setError(result.error)
@@ -375,9 +391,57 @@ export default function ChatWindow({
     }
 
     onTitleChange(conversation.id, next || null)
+    onConversationPatch?.(conversation.id, { title: next || null })
     void broadcastConversationMeta({
       id:    conversation.id,
       title: next || null,
+    })
+  }
+
+  async function saveConversationMeta(patch: {
+    support_category?: SupportCategory
+    logged_minutes?: number
+  }) {
+    if (!conversation || savingMeta) return
+
+    const nextCategory = patch.support_category ?? conversation.support_category
+    const nextMinutes = snapMinutes(
+      patch.logged_minutes ?? conversation.logged_minutes
+    )
+
+    if (
+      nextCategory === conversation.support_category &&
+      nextMinutes === conversation.logged_minutes
+    ) {
+      return
+    }
+
+    setSavingMeta(true)
+    setError(null)
+    const supabase = createClient()
+    const { error: updateError } = await supabase
+      .from('support_conversations')
+      .update({
+        support_category: nextCategory,
+        logged_minutes:   nextMinutes,
+      })
+      .eq('id', conversation.id)
+
+    setSavingMeta(false)
+
+    if (updateError) {
+      setError(updateError.message)
+      return
+    }
+
+    onConversationPatch?.(conversation.id, {
+      support_category: nextCategory,
+      logged_minutes:   nextMinutes,
+    })
+    void broadcastConversationMeta({
+      id:               conversation.id,
+      support_category: nextCategory,
+      logged_minutes:   nextMinutes,
     })
   }
 
@@ -480,6 +544,61 @@ export default function ChatWindow({
         )}
       </header>
 
+      <div className={styles.metaBar}>
+        <label className={styles.metaField}>
+          <span className={styles.metaLabel}>Type</span>
+          <select
+            className={styles.metaSelect}
+            value={conversation.support_category}
+            disabled={savingMeta}
+            onChange={e =>
+              void saveConversationMeta({
+                support_category: e.target.value as SupportCategory,
+              })
+            }
+            aria-label="Support category"
+          >
+            <option value="platform">{SUPPORT_CATEGORY_LABELS.platform}</option>
+            <option value="operational">{SUPPORT_CATEGORY_LABELS.operational}</option>
+          </select>
+        </label>
+
+        <div className={styles.metaField}>
+          <span className={styles.metaLabel}>Logged</span>
+          <div className={styles.minutesControl}>
+            <button
+              type="button"
+              className={styles.minutesBtn}
+              disabled={savingMeta || conversation.logged_minutes <= 0}
+              onClick={() =>
+                void saveConversationMeta({
+                  logged_minutes: conversation.logged_minutes - 5,
+                })
+              }
+              aria-label="Decrease minutes by 5"
+            >
+              −
+            </button>
+            <span className={styles.minutesValue}>
+              {formatLoggedMinutes(conversation.logged_minutes)}
+            </span>
+            <button
+              type="button"
+              className={styles.minutesBtn}
+              disabled={savingMeta}
+              onClick={() =>
+                void saveConversationMeta({
+                  logged_minutes: conversation.logged_minutes + 5,
+                })
+              }
+              aria-label="Increase minutes by 5"
+            >
+              +
+            </button>
+          </div>
+        </div>
+      </div>
+
       {error && <p className={styles.error}>{error}</p>}
       {offlineMessage && (
         <p className={styles.offlineBanner} role="status">
@@ -495,7 +614,10 @@ export default function ChatWindow({
         {messages.map(msg => {
           const isAgent = msg.sender_type === 'agent'
           const isMine = msg.sender_id === currentUserId
-          const mediaBubble = msg.message_type === 'image' || msg.message_type === 'voice'
+          const mediaBubble =
+            msg.message_type === 'image' ||
+            msg.message_type === 'voice' ||
+            msg.message_type === 'video'
           return (
             <div
               key={msg.id}
@@ -540,8 +662,20 @@ export default function ChatWindow({
           conversationId={conversation.id}
           senderId={currentUserId}
           senderType="agent"
-          disabled={conversation.status === 'closed' || voiceActive}
+          disabled={conversation.status === 'closed' || voiceActive || shotActive || recActive}
           onActiveChange={setImageActive}
+          onError={setError}
+          onSent={(row) => {
+            nameCache.current[currentUserId] = currentUserName
+            appendLocalMessage(row, currentUserName)
+          }}
+        />
+        <ScreenshotCapture
+          conversationId={conversation.id}
+          senderId={currentUserId}
+          senderType="agent"
+          disabled={conversation.status === 'closed' || voiceActive || imageActive || recActive}
+          onActiveChange={setShotActive}
           onError={setError}
           onSent={(row) => {
             nameCache.current[currentUserId] = currentUserName
@@ -552,8 +686,20 @@ export default function ChatWindow({
           conversationId={conversation.id}
           senderId={currentUserId}
           senderType="agent"
-          disabled={conversation.status === 'closed' || imageActive}
+          disabled={conversation.status === 'closed' || imageActive || shotActive || recActive}
           onActiveChange={setVoiceActive}
+          onError={setError}
+          onSent={(row) => {
+            nameCache.current[currentUserId] = currentUserName
+            appendLocalMessage(row, currentUserName)
+          }}
+        />
+        <ScreenRecorder
+          conversationId={conversation.id}
+          senderId={currentUserId}
+          senderType="agent"
+          disabled={conversation.status === 'closed' || voiceActive || imageActive || shotActive}
+          onActiveChange={setRecActive}
           onError={setError}
           onSent={(row) => {
             nameCache.current[currentUserId] = currentUserName

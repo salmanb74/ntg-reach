@@ -81,7 +81,7 @@ const NAV_ITEMS: NavItem[] = [
     modules: ['cs_resto', 'cs_alma'],
   },
   {
-    href: '/support/reports', label: 'Reports',
+    href: '/support/reports', label: 'Hours',
     svgPath: 'M18 20V10 M12 20V4 M6 20v-6',
     modules: ['cs_resto', 'cs_alma'],
   },

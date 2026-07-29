@@ -8,6 +8,7 @@ import type { ConversationItem, TenantGroup } from './types'
 import {
   formatLastMessageAgo,
   groupConversationsByTenant,
+  mapConversationRow,
 } from './types'
 import {
   clearSupportUnread,
@@ -79,6 +80,8 @@ export default function ConversationList({
     title?: string | null
     last_message_at?: string | null
     status?: ConversationItem['status']
+    support_category?: ConversationItem['support_category']
+    logged_minutes?: number
   }) => {
     setGroups(prev => {
       const all = prev.flatMap(g => g.conversations)
@@ -87,9 +90,11 @@ export default function ConversationList({
         c.id === row.id
           ? {
               ...c,
-              title:           row.title !== undefined ? row.title : c.title,
-              status:          row.status ?? c.status,
-              last_message_at: row.last_message_at ?? c.last_message_at,
+              title:            row.title !== undefined ? row.title : c.title,
+              status:           row.status ?? c.status,
+              last_message_at:  row.last_message_at ?? c.last_message_at,
+              support_category: row.support_category ?? c.support_category,
+              logged_minutes:   row.logged_minutes ?? c.logged_minutes,
             }
           : c
       )
@@ -138,11 +143,13 @@ export default function ConversationList({
                 c.id === row.id
                   ? {
                       ...c,
-                      title:           row.title !== undefined ? row.title : c.title,
-                      status:          row.status ?? c.status,
-                      assigned_to:     row.assigned_to !== undefined ? row.assigned_to : c.assigned_to,
-                      last_message_at: row.last_message_at ?? c.last_message_at,
-                      closed_at:       row.closed_at !== undefined ? row.closed_at : c.closed_at,
+                      title:            row.title !== undefined ? row.title : c.title,
+                      status:           row.status ?? c.status,
+                      assigned_to:      row.assigned_to !== undefined ? row.assigned_to : c.assigned_to,
+                      last_message_at:  row.last_message_at ?? c.last_message_at,
+                      closed_at:        row.closed_at !== undefined ? row.closed_at : c.closed_at,
+                      support_category: row.support_category ?? c.support_category,
+                      logged_minutes:   row.logged_minutes ?? c.logged_minutes,
                     }
                   : c
               )
@@ -158,24 +165,11 @@ export default function ConversationList({
             table:  'support_conversations',
           },
           (payload) => {
-            const row = payload.new as ConversationItem
+            const row = payload.new as Record<string, unknown>
             setGroups(prev => {
               const all = prev.flatMap(g => g.conversations)
-              if (all.some(c => c.id === row.id)) return prev
-              const item: ConversationItem = {
-                id:              row.id,
-                tenant_id:       row.tenant_id,
-                tenant_name:     row.tenant_name,
-                title:           row.title,
-                status:          row.status,
-                created_by:      row.created_by,
-                assigned_to:     row.assigned_to,
-                assigned_name:   null,
-                created_at:      row.created_at,
-                last_message_at: row.last_message_at ?? row.created_at,
-                closed_at:       row.closed_at,
-                product:         row.product,
-              }
+              if (all.some(c => c.id === String(row.id))) return prev
+              const item = mapConversationRow(row)
               return groupConversationsByTenant([item, ...all])
             })
           }
@@ -231,6 +225,20 @@ export default function ConversationList({
         ...g,
         conversations: g.conversations.map(c =>
           c.id === id ? { ...c, title } : c
+        ),
+      }))
+    )
+  }
+
+  function handleConversationPatch(
+    id: string,
+    patch: Partial<Pick<ConversationItem, 'support_category' | 'logged_minutes' | 'title'>>
+  ) {
+    setGroups(prev =>
+      prev.map(g => ({
+        ...g,
+        conversations: g.conversations.map(c =>
+          c.id === id ? { ...c, ...patch } : c
         ),
       }))
     )
@@ -422,6 +430,7 @@ export default function ConversationList({
           currentUserId={currentUserId}
           currentUserName={currentUserName}
           onTitleChange={handleTitleChange}
+          onConversationPatch={handleConversationPatch}
           onDelete={requestDelete}
           onOpenList={() => setListOpen(true)}
           onMessageActivity={bumpActivity}
